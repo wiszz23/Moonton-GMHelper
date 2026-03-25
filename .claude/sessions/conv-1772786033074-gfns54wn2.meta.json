@@ -1,0 +1,19 @@
+{
+  "id": "conv-1772786033074-gfns54wn2",
+  "title": "Add game items with admin commands",
+  "titleGenerationStatus": "success",
+  "createdAt": 1772786033075,
+  "updatedAt": 1772786229658,
+  "lastResponseAt": 1772786229658,
+  "sessionId": "df6f2e4f-7bf1-4163-9e54-37695c4d17b8",
+  "sdkSessionId": "df6f2e4f-7bf1-4163-9e54-37695c4d17b8",
+  "usage": {
+    "model": "haiku",
+    "inputTokens": 201,
+    "cacheCreationInputTokens": 535,
+    "cacheReadInputTokens": 33484,
+    "contextWindow": 200000,
+    "contextTokens": 34220,
+    "percentage": 17
+  }
+}

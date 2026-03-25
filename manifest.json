@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "GM助手",
+  "version": "3.15",
+  "description": "支持iframe和按钮操作的GM工具",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "GM助手"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [{
+    "resources": ["commands.json", "panel.html", "panel.js", "styles.css", "popup.html", "popup.js"],
+    "matches": ["<all_urls>"]
+  }],
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "打开或聚焦助手窗口"
+    }
+  },
+  "devtools_page": "devtools.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_script.js"]
+    }
+  ]
+}
