@@ -6,86 +6,148 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <!-- 左侧竖向 Tab 导航 -->
-    <div class="sidebar">
-      <div class="sidebar-item active" data-panel="gmlist">
-        <span class="sidebar-icon">&#9654;</span>
-        <span class="sidebar-label">GM列表</span>
-      </div>
-      <!-- GM列表子选项（动态生成） -->
-      <div class="sidebar-sub-items" id="category-tabs">
-        <div class="sidebar-sub-item active" data-category="all">全部</div>
-        <!-- 分类 tab 由 panel.js 动态填充 -->
-      </div>
-      <div class="sidebar-item" data-panel="history">
-        <span class="sidebar-icon">&#9654;</span>
-        <span class="sidebar-label">历史记录</span>
+  <div class="panel-wrapper">
+
+    <!-- ====== 顶部 Tab 导航 ====== -->
+    <div class="top-tabs">
+      <div class="top-tab active" data-tab="general">通用</div>
+      <div class="top-tab" data-tab="personal">个人</div>
+      <div class="top-tab" data-tab="history">历史</div>
+      <div class="top-tab" data-tab="settings">设置</div>
+    </div>
+
+    <!-- ====== 通用页面 ====== -->
+    <div id="page-general" class="tab-page active">
+      <div class="page-with-sidebar">
+        <div class="left-sidebar">
+          <div class="left-sidebar-header">分类</div>
+          <div id="general-category-list" class="left-sidebar-list">
+            <div class="left-sidebar-item active" data-category="all">全部</div>
+          </div>
+        </div>
+        <div class="main-panel">
+          <div class="toolbar-row">
+            <div class="input-group toolbar-id">
+              <label for="input-text">角色ID</label>
+              <input type="text" id="input-text" placeholder="空格分隔多个">
+            </div>
+            <div class="search-box toolbar-search">
+              <input type="text" id="search-input" placeholder="搜索GM指令...">
+            </div>
+          </div>
+          <div class="options-row">
+            <div class="checkbox-group">
+              <input type="checkbox" id="auto-run-checkbox" checked>
+              <label for="auto-run-checkbox">自动执行</label>
+            </div>
+          </div>
+          <div id="buttons-container" class="buttons-container"></div>
+        </div>
       </div>
     </div>
 
-    <!-- 右侧内容区 -->
-    <div class="content-area">
-
-      <!-- GM列表面板 -->
-      <div id="panel-gmlist" class="panel-section active">
-        <div id="status-area" class="status-area"></div>
-
-        <!-- 通用/个人 分页 -->
-        <div class="tab-switch-row">
-          <div class="tab-switch">
-            <div class="tab-btn active" data-tab="general">通用</div>
-            <div class="tab-btn" data-tab="personal">个人</div>
+    <!-- ====== 个人页面 ====== -->
+    <div id="page-personal" class="tab-page">
+      <div class="page-with-sidebar">
+        <div class="left-sidebar">
+          <div class="left-sidebar-header">
+            <span>我的分组</span>
+            <button id="add-category-btn" class="icon-btn" title="新建分组">+</button>
           </div>
-          <button id="add-cmd-btn" class="add-cmd-btn" title="添加指令">+ 添加指令</button>
-        </div>
-
-        <div class="toolbar-row">
-          <div class="input-group toolbar-id">
-            <label for="input-text">角色ID</label>
-            <input type="text" id="input-text" placeholder="空格分隔多个">
-          </div>
-          <div class="search-box toolbar-search">
-            <input type="text" id="search-input" placeholder="搜索GM指令...">
+          <div id="personal-category-list" class="left-sidebar-list">
+            <div class="left-sidebar-item active" data-category="all">全部</div>
           </div>
         </div>
-
-        <div class="options-row">
-          <div class="checkbox-group">
-            <input type="checkbox" id="auto-run-checkbox" checked>
-            <label for="auto-run-checkbox">自动执行</label>
+        <div class="main-panel">
+          <div class="toolbar-row">
+            <div class="input-group toolbar-id">
+              <label for="input-text-personal">角色ID</label>
+              <input type="text" id="input-text-personal" placeholder="空格分隔多个">
+            </div>
+            <div class="search-box toolbar-search">
+              <input type="text" id="search-input-personal" placeholder="搜索个人指令...">
+            </div>
           </div>
-          <button id="settings-btn" class="settings-btn" title="设置">&#9881;</button>
+          <div class="options-row">
+            <div class="checkbox-group">
+              <input type="checkbox" id="auto-run-personal" checked>
+              <label for="auto-run-personal">自动执行</label>
+            </div>
+            <button id="add-cmd-btn" class="add-cmd-btn" title="添加指令">+ 添加指令</button>
+          </div>
+          <div id="personal-buttons-container" class="buttons-container"></div>
         </div>
-
-        <div id="settings-panel" class="settings-panel hidden">
-          <div class="settings-header">
-            <span>域名白名单设置</span>
-            <button id="close-settings-btn" class="close-settings-btn">×</button>
-          </div>
-          <div class="input-group">
-            <label for="whitelist-input">白名单域名（每行一个）</label>
-            <textarea id="whitelist-input" rows="6" placeholder="http://gm.pre.nova.moonton.com:8201&#10;http://gm.nova.oa.mt:8201&#10;https://gm-cn.yyf.muyinetwork.com:8201&#10;https://gm.jp.novagames.net:8201&#10;https://gm.usa.novagames.net:8201"></textarea>
-          </div>
-          <button id="save-whitelist-btn" class="save-btn">保存白名单</button>
-        </div>
-
-        <div id="buttons-container" class="buttons-container"></div>
       </div>
+    </div>
 
-      <!-- 历史记录面板 -->
-      <div id="panel-history" class="panel-section">
+    <!-- ====== 历史页面 ====== -->
+    <div id="page-history" class="tab-page">
+      <div class="main-panel history-full">
         <div id="history-area" class="history-area">
           <div id="history-empty" class="history-empty">暂无执行记录</div>
           <div id="history-list" class="history-list"></div>
         </div>
         <button id="clear-history-btn" class="clear-history-btn">清空历史记录</button>
       </div>
+    </div>
 
+    <!-- ====== 设置页面 ====== -->
+    <div id="page-settings" class="tab-page">
+      <div class="main-panel history-full">
+        <div class="settings-page-block">
+          <div class="settings-page-title">域名白名单</div>
+          <div class="settings-page-desc">每行一个域名，支持子域名匹配</div>
+          <div class="input-group">
+            <textarea id="whitelist-input" rows="8" placeholder="gm.pre.nova.moonton.com&#10;gm.nova.oa.mt&#10;gm-cn.yyf.muyinetwork.com"></textarea>
+          </div>
+          <button id="save-whitelist-btn" class="save-btn" style="margin-top:4px;">保存白名单</button>
+        </div>
+        <div class="settings-page-block">
+          <div class="settings-page-title">面板信息</div>
+          <div class="settings-page-desc" id="settings-info">加载中...</div>
+        </div>
+        <div class="settings-page-block">
+          <div class="settings-page-title">通用指令</div>
+          <button id="reset-general-btn" class="save-btn" style="background: linear-gradient(135deg, #c62828 0%, #ef5350 100%);">重置为本地默认</button>
+          <div class="settings-page-desc">将通用指令恢复为本地 commands.json 默认配置（会覆盖数据库中的数据）</div>
+        </div>
+        <div class="settings-page-block">
+          <div class="settings-page-title">数据库维护</div>
+          <button id="dedup-btn" class="save-btn" style="background: linear-gradient(135deg, #e65100 0%, #ff6d00 100%);">清理重复数据</button>
+          <div class="settings-page-desc">删除同一用户名的重复记录，保留最新一条</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ====== 浮动 Toast 通知 ====== -->
+  <div id="toast-container"></div>
+
+  <!-- ====== 分组弹窗（创建/编辑） ====== -->
+  <div id="add-category-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="cat-modal-title">新建分组</span>
+        <button id="close-cat-modal-btn" class="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label for="modal-cat-name">分组名称</label>
+          <input type="text" id="modal-cat-name" placeholder="例如：我的装备" maxlength="20">
+        </div>
+        <div id="cat-delete-row" class="modal-delete-row hidden">
+          <button id="modal-cat-delete-btn" class="modal-delete-btn">删除此分组</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="modal-cat-cancel-btn" class="modal-cancel-btn">取消</button>
+        <button id="modal-cat-confirm-btn" class="modal-confirm-btn">创建</button>
+      </div>
     </div>
   </div>
 
-  <!-- 添加/编辑指令弹层 -->
+  <!-- ====== 添加/编辑指令弹层 ====== -->
   <div id="add-cmd-modal" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-header">
@@ -95,32 +157,18 @@
       <div class="modal-body">
         <div class="input-group">
           <label for="modal-cmd-name">指令名称</label>
-          <input type="text" id="modal-cmd-name" placeholder="例如：给角色加钻石">
+          <input type="text" id="modal-cmd-name" placeholder="例如：给角色加钻石" maxlength="30">
         </div>
         <div class="input-group">
           <label for="modal-cmd-text">指令内容</label>
-          <textarea id="modal-cmd-text" rows="4" placeholder="例如：add_item %s 90001 99999&#10;%s 或 % 均会被自动替换为角色ID，支持多行"></textarea>
+          <textarea id="modal-cmd-text" class="modal-cmd-textarea" rows="4" placeholder="例如：add_item %s 90001 99999&#10;add_item %s 90002 99999"></textarea>
+          <div class="modal-cmd-hint">%s 或 % 会被自动替换为角色ID，支持多行指令</div>
         </div>
-        <div class="input-group">
-          <label for="modal-cmd-category">分组</label>
-          <select id="modal-cmd-category" class="modal-select">
-            <option value="装备">装备</option>
-            <option value="道具">道具</option>
-            <option value="天赋">天赋</option>
-            <option value="核心">核心</option>
-            <option value="宝石">宝石</option>
-            <option value="皮肤">皮肤</option>
-            <option value="枪械">枪械</option>
-            <option value="城墙">城墙</option>
-            <option value="主线关">主线关</option>
-            <option value="召唤">召唤</option>
-            <option value="战斗">战斗</option>
-            <option value="公会">公会</option>
-            <option value="玩家">玩家</option>
-            <option value="邮件">邮件</option>
-            <option value="rogue">rogue</option>
-          </select>
+        <div class="modal-category-wrap">
+          <label>所属分组</label>
+          <div id="modal-category-tags" class="modal-category-tags"></div>
         </div>
+        <input type="hidden" id="modal-cmd-category">
       </div>
       <div class="modal-footer">
         <button id="modal-cancel-btn" class="modal-cancel-btn">取消</button>
@@ -128,6 +176,7 @@
       </div>
     </div>
   </div>
+
   <script src="panel.js"></script>
 </body>
 </html>

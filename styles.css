@@ -1,5 +1,5 @@
 /* ============================================================
-   GM助手 - 竖向Tab + 横向行按钮布局
+   GM助手 - 顶部3Tab + 左右布局
    ============================================================ */
 
 * {
@@ -11,8 +11,6 @@
 html, body {
   width: 100%;
   height: 100%;
-  margin: 0;
-  padding: 0;
   overflow: hidden;
 }
 
@@ -24,154 +22,208 @@ body {
 }
 
 /* ============================================================
-   主布局：左侧边栏 + 右侧内容（Grid）
+   整体布局
    ============================================================ */
-.container {
-  display: grid;
-  grid-template-columns: 80px 1fr;
-  grid-template-rows: 1fr;
+.panel-wrapper {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
-  max-width: 380px;
-  min-width: 80px;
+  min-width: 300px;
+  max-width: 480px;
+}
+
+/* ============================================================
+   顶部 Tab 导航
+   ============================================================ */
+.top-tabs {
+  display: flex;
+  align-items: center;
+  background: #1a1a2e;
+  padding: 0 4px;
+  flex-shrink: 0;
+  height: 38px;
+  gap: 2px;
+}
+
+.top-tab {
+  padding: 0 16px;
+  height: 38px;
+  line-height: 38px;
+  color: #9e9eaf;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.top-tab:hover {
+  color: #e8eaf6;
+}
+
+.top-tab.active {
+  color: #fff;
+  border-bottom-color: #42a5f5;
+}
+
+/* ============================================================
+   Tab 页面
+   ============================================================ */
+.tab-page {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tab-page.active {
+  display: flex;
+}
+
+/* ============================================================
+   通用/个人页面：左右布局
+   ============================================================ */
+.page-with-sidebar {
+  display: flex;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
 /* ============================================================
-   左侧竖向 Sidebar
+   左侧分类栏
    ============================================================ */
-.sidebar {
-  background: #f0f2f5;
+.left-sidebar {
+  width: 90px;
+  min-width: 90px;
+  background: #f5f5f5;
   border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  width: 80px;
-  min-width: 80px;
+  overflow: hidden;
 }
 
-.sidebar-item {
+.left-sidebar-header {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 10px 8px;
-  cursor: pointer;
+  justify-content: space-between;
+  padding: 8px 8px 4px;
   font-size: 11px;
-  font-weight: 500;
-  color: #666;
-  border-left: 3px solid transparent;
-  transition: all 0.15s ease;
-  user-select: none;
-  line-height: 1.3;
+  font-weight: 600;
+  color: #888;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
 }
 
-.sidebar-item:hover {
-  background: #e4e8ee;
+.left-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.left-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+  border-left: 2px solid transparent;
+  gap: 4px;
+}
+
+.left-sidebar-item:hover {
+  background: #e8eaf0;
   color: #333;
 }
 
-.sidebar-item.active {
-  background: #e8f0fe;
+.left-sidebar-item.active {
+  background: #e0eaff;
   color: #1a56db;
   border-left-color: #1a56db;
   font-weight: 600;
 }
 
-.sidebar-icon {
-  font-size: 6px;
-  flex-shrink: 0;
-  transition: transform 0.15s ease;
-}
-
-.sidebar-item.active .sidebar-icon {
-  transform: rotate(90deg);
-}
-
-.sidebar-label {
+.left-sidebar-item .cat-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
 }
 
-/* ============================================================
-   右侧内容区
-   ============================================================ */
-.content-area {
-  display: flex;
-  flex-direction: column;
-}
-
-.panel-section {
+.left-sidebar-item .cat-actions {
   display: none;
-  flex-direction: column;
-  padding: 10px 12px;
-  gap: 8px;
-  overflow: visible;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-.panel-section.active {
+.left-sidebar-item:hover .cat-actions {
   display: flex;
 }
 
-/* ============================================================
-   通用/个人 分页切换
-   ============================================================ */
-.tab-switch-row {
+.left-sidebar-item .edit-cat-btn,
+.left-sidebar-item .del-cat-btn {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-shrink: 0;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
 }
 
-.tab-switch {
+.edit-cat-btn {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.edit-cat-btn:hover {
+  background: #bbdefb;
+}
+
+.del-cat-btn {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.del-cat-btn:hover {
+  background: #ffcdd2;
+}
+
+/* ============================================================
+   右侧主面板
+   ============================================================ */
+.main-panel {
+  flex: 1;
   display: flex;
-  background: #e8eaed;
-  border-radius: 6px;
-  padding: 2px;
-  gap: 2px;
+  flex-direction: column;
+  padding: 8px 10px;
+  gap: 6px;
+  overflow: hidden;
+  min-width: 0;
 }
 
-.tab-btn {
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  color: #666;
-  transition: all 0.15s ease;
-  user-select: none;
+.history-full {
+  padding: 10px 12px;
 }
 
-.tab-btn.active {
-  background: #fff;
-  color: #1a56db;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-}
-
-.tab-btn:hover:not(.active) {
-  color: #333;
-}
-
-.add-cmd-btn {
-  padding: 4px 10px;
-  background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
-  color: white;
-  border: none;
-  border-radius: 5px;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.add-cmd-btn:hover {
-  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.3);
-}
+/* ============================================================
+   通用/个人 分页切换（已废弃，由 .top-tabs 替代）
+   ============================================================ */
+.tab-switch-row { display: none; }
+.tab-switch { display: none; }
+.tab-btn { display: none; }
 
 /* ============================================================
    下拉框（弹层内）
@@ -217,14 +269,15 @@ body {
   box-sizing: border-box;
 }
 
-.modal-overlay.hidden {
-  display: none;
+.modal-overlay.hidden,
+.hidden {
+  display: none !important;
 }
 
 .modal-box {
   background: #fff;
   border-radius: 10px;
-  width: 320px;
+  width: 380px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.25);
   overflow: hidden;
 }
@@ -254,10 +307,96 @@ body {
 }
 
 .modal-body {
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+}
+
+/* ============================================================
+   弹窗分组标签选择
+   ============================================================ */
+.modal-category-wrap label {
+  display: block;
+  color: #555;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.modal-category-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modal-cat-tag {
+  padding: 4px 10px;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  font-size: 11px;
+  color: #555;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.modal-cat-tag:hover {
+  border-color: #4a9eff;
+  color: #1a56db;
+  background: #e8f0fe;
+}
+
+.modal-cat-tag.active {
+  border-color: #1a56db;
+  color: #fff;
+  background: #1a56db;
+}
+
+.modal-cat-tag.active:hover {
+  background: #1344b8;
+}
+
+/* ============================================================
+   添加指令弹窗增强
+   ============================================================ */
+.modal-cmd-hint {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: -4px;
+  line-height: 1.4;
+}
+
+.modal-cmd-name-wrap {
+  position: relative;
+}
+
+.modal-cmd-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* 分组弹窗中的删除按钮（编辑模式才显示） */
+.modal-delete-row {
+  margin-top: 2px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.modal-delete-btn {
+  padding: 6px 16px;
+  background: #fff;
+  color: #ef5350;
+  border: 1px solid #ef5350;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.modal-delete-btn:hover {
+  background: #ffebee;
 }
 
 .modal-footer {
@@ -301,28 +440,66 @@ body {
 }
 
 /* ============================================================
-   状态区
+   状态区（已废弃，由 Toast 替代）
    ============================================================ */
-#status-area {
-  padding: 7px 10px;
-  border-radius: 6px;
+#status-area, #status-area-personal { display: none !important; }
+
+/* ============================================================
+   浮动 Toast 通知
+   ============================================================ */
+#toast-container {
+  position: fixed;
+  top: 44px;
+  right: 8px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 7px 14px;
+  border-radius: 8px;
   font-size: 12px;
+  font-weight: 500;
+  max-width: 220px;
   word-break: break-all;
-  white-space: pre-wrap;
-  display: none;
-  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: toast-in 0.2s ease;
+  pointer-events: none;
 }
 
-#status-area.info {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #a5d6a7;
+.toast.info {
+  background: #1a1a2e;
+  color: #fff;
+  border-left: 3px solid #42a5f5;
 }
 
-#status-area.error {
-  background: #ffebee;
-  color: #c62828;
-  border: 1px solid #ef9a9a;
+.toast.success {
+  background: #1b5e20;
+  color: #fff;
+  border-left: 3px solid #4caf50;
+}
+
+.toast.error {
+  background: #b71c1c;
+  color: #fff;
+  border-left: 3px solid #ef5350;
+}
+
+.toast.leaving {
+  animation: toast-out 0.25s ease forwards;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(20px); }
 }
 
 /* ============================================================
@@ -406,40 +583,55 @@ textarea::placeholder {
 }
 
 /* ============================================================
-   GM列表 子选项（侧边栏内嵌）
+   快捷操作图标按钮
    ============================================================ */
-.sidebar-sub-items {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 4px 0;
-  background: #e8eaf0;
-  border-bottom: 1px solid #d0d8e8;
-}
-
-.sidebar-sub-item {
+.icon-btn {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: #e0e0e0;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  color: #555;
   display: flex;
   align-items: center;
-  padding: 5px 8px 5px 20px;
+  justify-content: center;
+  transition: all 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.icon-btn:hover {
+  background: #1a56db;
+  color: #fff;
+}
+
+/* ============================================================
+   添加指令按钮
+   ============================================================ */
+.add-cmd-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid #1a56db;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #1565c0 0%, #1a56db 100%);
+  color: #fff;
   font-size: 11px;
-  color: #555;
+  font-weight: 500;
   cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: all 0.12s ease;
-  user-select: none;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.sidebar-sub-item:hover {
-  background: #dde4f5;
-  color: #333;
-}
-.sidebar-sub-item.active {
-  background: #e0eaff;
-  color: #1a56db;
-  border-left-color: #1a56db;
-  font-weight: 600;
+
+.add-cmd-btn:hover {
+  background: linear-gradient(135deg, #1a56db 0%, #2e6ec2 100%);
+  box-shadow: 0 2px 8px rgba(26, 86, 219, 0.3);
 }
 
 /* ============================================================
@@ -551,6 +743,44 @@ textarea::placeholder {
 }
 
 /* ============================================================
+   设置页面
+   ============================================================ */
+.settings-page-block {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.settings-page-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.settings-page-desc {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.settings-page-block textarea {
+  resize: vertical;
+}
+
+.settings-page-block .save-btn {
+  margin-top: 2px;
+}
+
+.settings-page-block .settings-page-desc {
+  margin-top: -2px;
+}
+
+/* ============================================================
    搜索框
    ============================================================ */
 .search-box input {
@@ -581,9 +811,12 @@ textarea::placeholder {
   font-size: 12px;
   font-weight: bold;
   color: #888;
-  padding: 10px 8px 4px 8px;
+  padding: 10px 0 4px 0;
+  margin-top: 6px;
   border-bottom: 1px solid #f0f0f0;
   margin-bottom: 4px;
+  width: 100%;
+  text-align: left;
 }
 
 .search-empty {
@@ -657,7 +890,20 @@ textarea::placeholder {
   flex-direction: row;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 400px;
+  flex: 1;
+  min-height: 0;
+  align-content: flex-start;
+}
+
+#personal-buttons-container {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  align-content: flex-start;
 }
 
 .button {

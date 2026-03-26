@@ -8,7 +8,10 @@
   const userInfo = readUserInfo();
   if (userInfo && userInfo.length > 0) {
     const rawName = userInfo[0].text;
-    chrome.storage.local.set({ gm_user_name: rawName });
+    const safeName = (rawName || '').trim();
+    if (safeName) {
+      chrome.storage.local.set({ gm_user_name: safeName });
+    }
   }
   // 写入当前域名，供 panel.js 白名单校验
   chrome.storage.local.set({ gm_current_domain: window.location.hostname });
@@ -156,7 +159,7 @@
   // 创建悬浮窗容器
   // ============================================================
   function createPanel(hosts) {
-    console.log('[GM助手] createPanel() 开始执行');
+    console.log('[GM助手] createPanel() 开始执行, INIT_CONTAINER_H=600, INIT_IFRAME_H=568');
     // 读取用户信息并打日志
     readUserInfo();
 
@@ -164,12 +167,12 @@
     const TOP_OFFSET = 38;
     const CTRL_HEIGHT = 32;
     // 最小容器高度（仅展示控制区，不填满视口）
-    const MIN_CONTAINER_H = 240;
+    const MIN_CONTAINER_H = 600;
     const MIN_IFRAME_H = MIN_CONTAINER_H - CTRL_HEIGHT; // 118px
     // 最大不能超出视口
-    const MAX_CONTAINER_H = window.innerHeight - TOP_OFFSET;
+    const MAX_CONTAINER_H = Math.max(window.innerHeight - TOP_OFFSET, 600);
     // 初始高度：自适应，由 iframe 内容决定
-    const INIT_CONTAINER_H = MIN_CONTAINER_H;
+    const INIT_CONTAINER_H = 600;
 
     const panelContainer = document.createElement('div');
     panelContainer.id = 'my-plugin-panel-container';
@@ -184,6 +187,7 @@
       'min-height: ' + MIN_CONTAINER_H + 'px',
       'max-height: ' + MAX_CONTAINER_H + 'px',
       'height: ' + INIT_CONTAINER_H + 'px',
+      'overflow: hidden',
       'z-index: 999999',
       'border: 1px solid #ccc',
       'background: #fff',
@@ -289,7 +293,7 @@
     controlBar.appendChild(closeBtn);
 
     // iframe（初始设合理值，由父窗口在 load 时读取真实高度）
-    const INIT_IFRAME_H = 600;
+    const INIT_IFRAME_H = 568;
     const panel = document.createElement('iframe');
     panel.id = 'my-plugin-panel';
     panel.src = chrome.runtime.getURL('panel.html');
@@ -395,22 +399,13 @@
       if (expandBtn) { expandBtn.remove(); expandBtn = null; }
     });
 
-    // iframe 内容变化时（搜索/历史切换），通知父窗口重新测量
+    // 固定面板高度（GM 页面自身 DOM 不稳定，不动态响应内容变化）
     window.addEventListener('message', (event) => {
       const data = event.data;
       if (!data || !data.type) return;
       if (data.type === 'CLOSE_MY_PLUGIN_PANEL') {
         panelContainer.remove();
         if (expandBtn) { expandBtn.remove(); expandBtn = null; }
-        return;
-      }
-      if (data.type === 'GM_PANEL_HEIGHT') {
-        // 接收 iframe 上报的真实内容高度，加上控制栏，限制不超过视口
-        const rawH = data.height || 0;
-        if (rawH <= 0) return; // 内容未加载时忽略
-        const targetH = Math.min(rawH + CTRL_HEIGHT, MAX_CONTAINER_H);
-        panelContainer.style.height = targetH + 'px';
-        panel.style.height = (targetH - CTRL_HEIGHT) + 'px';
         return;
       }
     });

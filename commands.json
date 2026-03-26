@@ -211,58 +211,6 @@
       "text": "reset_wall %s"
     }
   ],
-  "主线关": [
-    {
-      "name": "当前关卡胜利",
-      "text": "win_level %s"
-    },
-    {
-      "name": "当前关卡失败",
-      "text": "fail_level %s"
-    },
-    {
-      "name": "指定关卡",
-      "text": "set_level %s "
-    },
-    {
-      "name": "跳过当前波次",
-      "text": "skip_wave %s"
-    },
-    {
-      "name": "通关章节1",
-      "text": "set_chapter %s 1"
-    },
-    {
-      "name": "通关章节5",
-      "text": "set_chapter %s 5"
-    },
-    {
-      "name": "通关章节10",
-      "text": "set_chapter %s 10"
-    }
-  ],
-  "召唤": [
-    {
-      "name": "单抽",
-      "text": "gacha %s 1"
-    },
-    {
-      "name": "十连",
-      "text": "gacha %s 10"
-    },
-    {
-      "name": "必得传说",
-      "text": "gacha_legend %s 1"
-    },
-    {
-      "name": "UP池单抽",
-      "text": "gacha_up %s 1"
-    },
-    {
-      "name": "UP池十连",
-      "text": "gacha_up %s 10"
-    }
-  ],
   "战斗": [
     {
       "name": "加血10%",
@@ -309,28 +257,6 @@
       "text": "clear_monster %s"
     }
   ],
-  "公会": [
-    {
-      "name": "公会币+9999",
-      "text": "add_guild_coin %s 9999"
-    },
-    {
-      "name": "公会经验+9999",
-      "text": "add_guild_exp %s 9999"
-    },
-    {
-      "name": "公会升级",
-      "text": "guild_up %s"
-    },
-    {
-      "name": "离开公会",
-      "text": "leave_guild %s"
-    },
-    {
-      "name": "创建公会",
-      "text": "create_guild %s TestGuild"
-    }
-  ],
   "玩家": [
     {
       "name": "设置昵称",
@@ -357,32 +283,6 @@
     {
       "name": "发送系统邮件",
       "text": "send_mail %s TestMail 奖励内容"
-    }
-  ],
-  "rogue": [
-    {
-      "name": "随机卡组",
-      "text": "rogue_random_deck %s"
-    },
-    {
-      "name": "清空卡组",
-      "text": "rogue_clear_deck %s"
-    },
-    {
-      "name": "随机遗物",
-      "text": "rogue_random_relic %s"
-    },
-    {
-      "name": "遗物全解锁",
-      "text": "rogue_unlock_all_relic %s"
-    },
-    {
-      "name": "进入下一层",
-      "text": "rogue_next_floor %s"
-    },
-    {
-      "name": "rogue币+9999",
-      "text": "add_item %s 90010 9999"
     }
   ]
 }
