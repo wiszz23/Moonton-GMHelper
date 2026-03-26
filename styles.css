@@ -577,6 +577,15 @@ textarea::placeholder {
   font-size: 11px;
 }
 
+.category-header {
+  font-size: 12px;
+  font-weight: bold;
+  color: #888;
+  padding: 10px 8px 4px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 4px;
+}
+
 .search-empty {
   text-align: center;
   color: #999;

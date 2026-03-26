@@ -1,91 +1,388 @@
 {
-  "【装备】全套橙装": "add_gear %s 611210 1\nadd_gear %s 612310 1\nadd_gear %s 613410 1\nadd_gear %s 614510 1\nadd_gear %s 615610 1\nadd_gear %s 616405 1",
-  "【装备】全套紫装": "add_gear %s 511210 1\nadd_gear %s 512310 1\nadd_gear %s 513410 1\nadd_gear %s 514510 1\nadd_gear %s 515610 1\nadd_gear %s 516405 1",
-  "【装备】升级材料": "add_item %s 3001 10000\nadd_item %s 3011 10000\nadd_item %s 3012 10000\nadd_item %s 3013 10000\nadd_item %s 3014 10000\nadd_item %s 3015 10000\nadd_item %s 3016 10000\nadd_item %s 999 10000\nadd_item %s 1 10000",
-  "【装备】宝箱道具": "add_item %s 30001 10\nadd_item %s 30003 1\nadd_item %s 30004 1\nadd_item %s 30005 1\nadd_item %s 30006 1\nadd_item %s 30007 1\nadd_item %s 30008 1\nadd_item %s 30009 1",
-  "【道具】钻石+99999": "add_item %s 90001 99999",
-  "【道具】金币+999999": "add_item %s 90002 999999",
-  "【道具】体力+999": "add_item %s 90003 999",
-  "【道具】能量+999": "add_item %s 90004 999",
-  "【道具】经验+99999": "add_item %s 90005 99999",
-  "【道具】友情点+9999": "add_item %s 90006 9999",
-  "【道具】公会币+9999": "add_item %s 90007 9999",
-  "【道具】竞技场币+9999": "add_item %s 90008 9999",
-  "【道具】迷宫币+9999": "add_item %s 90009 9999",
-  "【道具】rogue币+9999": "add_item %s 90010 9999",
-  "【道具】体力药水+99": "add_item %s 90011 99",
-  "【道具】能量药水+99": "add_item %s 90012 99",
-  "【道具】经验药水+99": "add_item %s 90013 99",
-  "【道具】召唤券+99": "add_item %s 90014 99",
-  "【道具】传说召唤券+99": "add_item %s 90015 99",
-  "【道具】全道具+999": "add_item %s 1 999\nadd_item %s 2 999\nadd_item %s 3 999\nadd_item %s 4 999\nadd_item %s 5 999",
-  "【道具】全道具+9999": "add_item %s 1 9999\nadd_item %s 2 9999\nadd_item %s 3 9999\nadd_item %s 4 9999\nadd_item %s 5 9999",
-  "【道具】清理背包": "clear_bag %s",
-  "【道具】添加指定道具": "add_item %s ",
-  "【天赋】天赋点+100": "add_talent_point %s 100",
-  "【天赋】天赋全满": "max_talent %s",
-  "【天赋】天赋重置": "reset_talent %s",
-  "【核心】核心经验+99999": "add_core_exp %s 99999",
-  "【核心】核心等级+10": "add_core_level %s 10",
-  "【核心】核心满级": "max_core %s",
-  "【核心】核心重置": "reset_core %s",
-  "【核心】指定核心升级": "add_core_level %s ",
-  "【宝石】宝石+99": "add_gem %s 99",
-  "【宝石】宝石+999": "add_gem %s 999",
-  "【宝石】宝石全满": "max_gem %s",
-  "【宝石】宝石槽解锁": "unlock_gem_slot %s",
-  "【皮肤】皮肤全解锁": "unlock_all_skin %s",
-  "【皮肤】指定皮肤": "unlock_skin %s ",
-  "【枪械】武器+999": "add_weapon %s 999",
-  "【枪械】武器满级": "max_weapon %s",
-  "【枪械】弹药+999": "add_ammo %s 999",
-  "【枪械】枪械重置": "reset_weapon %s",
-  "【城墙】城墙血量满": "repair_wall %s",
-  "【城墙】城墙血量+10000": "add_wall_hp %s 10000",
-  "【城墙】城墙等级+10": "add_wall_level %s 10",
-  "【城墙】城墙满级": "max_wall %s",
-  "【城墙】陷阱+99": "add_trap %s 99",
-  "【城墙】箭塔+99": "add_archer %s 99",
-  "【城墙】加农炮+99": "add_cannon %s 99",
-  "【城墙】城墙重置": "reset_wall %s",
-  "【主线关】当前关卡胜利": "win_level %s",
-  "【主线关】当前关卡失败": "fail_level %s",
-  "【主线关】指定关卡": "set_level %s ",
-  "【主线关】跳过当前波次": "skip_wave %s",
-  "【主线关】通关章节1": "set_chapter %s 1",
-  "【主线关】通关章节5": "set_chapter %s 5",
-  "【主线关】通关章节10": "set_chapter %s 10",
-  "【召唤】单抽": "gacha %s 1",
-  "【召唤】十连": "gacha %s 10",
-  "【召唤】必得传说": "gacha_legend %s 1",
-  "【召唤】UP池单抽": "gacha_up %s 1",
-  "【召唤】UP池十连": "gacha_up %s 10",
-  "【战斗】加血10%": "add_hp %s 10",
-  "【战斗】减血10%": "del_hp %s 10",
-  "【战斗】直接死亡": "kill %s",
-  "【战斗】打开AI": "ai_on %s",
-  "【战斗】关闭AI": "ai_off %s",
-  "【战斗】升一级": "level_up %s 1",
-  "【战斗】一键满级": "level_up %s 999",
-  "【战斗】添加Buff": "add_buff %s ",
-  "【战斗】移除Buff": "remove_buff %s ",
-  "【战斗】添加怪物": "add_monster %s ",
-  "【战斗】怪物全清": "clear_monster %s",
-  "【公会】公会币+9999": "add_guild_coin %s 9999",
-  "【公会】公会经验+9999": "add_guild_exp %s 9999",
-  "【公会】公会升级": "guild_up %s",
-  "【公会】离开公会": "leave_guild %s",
-  "【公会】创建公会": "create_guild %s TestGuild",
-  "【玩家】设置昵称": "set_name %s TestPlayer",
-  "【玩家】设置等级": "set_level %s 999",
-  "【玩家】设置VIP等级": "set_vip %s 15",
-  "【玩家】解锁全功能": "unlock_all %s",
-  "【玩家】重置账户": "reset_account %s",
-  "【邮件】发送系统邮件": "send_mail %s TestMail 奖励内容",
-  "【rogue】随机卡组": "rogue_random_deck %s",
-  "【rogue】清空卡组": "rogue_clear_deck %s",
-  "【rogue】随机遗物": "rogue_random_relic %s",
-  "【rogue】遗物全解锁": "rogue_unlock_all_relic %s",
-  "【rogue】进入下一层": "rogue_next_floor %s",
-  "【rogue】rogue币+9999": "add_item %s 90010 9999"
+  "装备": [
+    {
+      "name": "全套橙装",
+      "text": "add_gear %s 611210 1\nadd_gear %s 612310 1\nadd_gear %s 613410 1\nadd_gear %s 614510 1\nadd_gear %s 615610 1\nadd_gear %s 616405 1"
+    },
+    {
+      "name": "全套紫装",
+      "text": "add_gear %s 511210 1\nadd_gear %s 512310 1\nadd_gear %s 513410 1\nadd_gear %s 514510 1\nadd_gear %s 515610 1\nadd_gear %s 516405 1"
+    },
+    {
+      "name": "升级材料",
+      "text": "add_item %s 3001 10000\nadd_item %s 3011 10000\nadd_item %s 3012 10000\nadd_item %s 3013 10000\nadd_item %s 3014 10000\nadd_item %s 3015 10000\nadd_item %s 3016 10000\nadd_item %s 999 10000\nadd_item %s 1 10000"
+    },
+    {
+      "name": "宝箱道具",
+      "text": "add_item %s 30001 10\nadd_item %s 30003 1\nadd_item %s 30004 1\nadd_item %s 30005 1\nadd_item %s 30006 1\nadd_item %s 30007 1\nadd_item %s 30008 1\nadd_item %s 30009 1"
+    }
+  ],
+  "道具": [
+    {
+      "name": "钻石+99999",
+      "text": "add_item %s 90001 99999"
+    },
+    {
+      "name": "金币+999999",
+      "text": "add_item %s 90002 999999"
+    },
+    {
+      "name": "体力+999",
+      "text": "add_item %s 90003 999"
+    },
+    {
+      "name": "能量+999",
+      "text": "add_item %s 90004 999"
+    },
+    {
+      "name": "经验+99999",
+      "text": "add_item %s 90005 99999"
+    },
+    {
+      "name": "友情点+9999",
+      "text": "add_item %s 90006 9999"
+    },
+    {
+      "name": "公会币+9999",
+      "text": "add_item %s 90007 9999"
+    },
+    {
+      "name": "竞技场币+9999",
+      "text": "add_item %s 90008 9999"
+    },
+    {
+      "name": "迷宫币+9999",
+      "text": "add_item %s 90009 9999"
+    },
+    {
+      "name": "rogue币+9999",
+      "text": "add_item %s 90010 9999"
+    },
+    {
+      "name": "体力药水+99",
+      "text": "add_item %s 90011 99"
+    },
+    {
+      "name": "能量药水+99",
+      "text": "add_item %s 90012 99"
+    },
+    {
+      "name": "经验药水+99",
+      "text": "add_item %s 90013 99"
+    },
+    {
+      "name": "召唤券+99",
+      "text": "add_item %s 90014 99"
+    },
+    {
+      "name": "传说召唤券+99",
+      "text": "add_item %s 90015 99"
+    },
+    {
+      "name": "全道具+999",
+      "text": "add_item %s 1 999\nadd_item %s 2 999\nadd_item %s 3 999\nadd_item %s 4 999\nadd_item %s 5 999"
+    },
+    {
+      "name": "全道具+9999",
+      "text": "add_item %s 1 9999\nadd_item %s 2 9999\nadd_item %s 3 9999\nadd_item %s 4 9999\nadd_item %s 5 9999"
+    },
+    {
+      "name": "清理背包",
+      "text": "clear_bag %s"
+    },
+    {
+      "name": "添加指定道具",
+      "text": "add_item %s "
+    }
+  ],
+  "天赋": [
+    {
+      "name": "天赋点+100",
+      "text": "add_talent_point %s 100"
+    },
+    {
+      "name": "天赋全满",
+      "text": "max_talent %s"
+    },
+    {
+      "name": "天赋重置",
+      "text": "reset_talent %s"
+    }
+  ],
+  "核心": [
+    {
+      "name": "核心经验+99999",
+      "text": "add_core_exp %s 99999"
+    },
+    {
+      "name": "核心等级+10",
+      "text": "add_core_level %s 10"
+    },
+    {
+      "name": "核心满级",
+      "text": "max_core %s"
+    },
+    {
+      "name": "核心重置",
+      "text": "reset_core %s"
+    },
+    {
+      "name": "指定核心升级",
+      "text": "add_core_level %s "
+    }
+  ],
+  "宝石": [
+    {
+      "name": "宝石+99",
+      "text": "add_gem %s 99"
+    },
+    {
+      "name": "宝石+999",
+      "text": "add_gem %s 999"
+    },
+    {
+      "name": "宝石全满",
+      "text": "max_gem %s"
+    },
+    {
+      "name": "宝石槽解锁",
+      "text": "unlock_gem_slot %s"
+    }
+  ],
+  "皮肤": [
+    {
+      "name": "皮肤全解锁",
+      "text": "unlock_all_skin %s"
+    },
+    {
+      "name": "指定皮肤",
+      "text": "unlock_skin %s "
+    }
+  ],
+  "枪械": [
+    {
+      "name": "武器+999",
+      "text": "add_weapon %s 999"
+    },
+    {
+      "name": "武器满级",
+      "text": "max_weapon %s"
+    },
+    {
+      "name": "弹药+999",
+      "text": "add_ammo %s 999"
+    },
+    {
+      "name": "枪械重置",
+      "text": "reset_weapon %s"
+    }
+  ],
+  "城墙": [
+    {
+      "name": "城墙血量满",
+      "text": "repair_wall %s"
+    },
+    {
+      "name": "城墙血量+10000",
+      "text": "add_wall_hp %s 10000"
+    },
+    {
+      "name": "城墙等级+10",
+      "text": "add_wall_level %s 10"
+    },
+    {
+      "name": "城墙满级",
+      "text": "max_wall %s"
+    },
+    {
+      "name": "陷阱+99",
+      "text": "add_trap %s 99"
+    },
+    {
+      "name": "箭塔+99",
+      "text": "add_archer %s 99"
+    },
+    {
+      "name": "加农炮+99",
+      "text": "add_cannon %s 99"
+    },
+    {
+      "name": "城墙重置",
+      "text": "reset_wall %s"
+    }
+  ],
+  "主线关": [
+    {
+      "name": "当前关卡胜利",
+      "text": "win_level %s"
+    },
+    {
+      "name": "当前关卡失败",
+      "text": "fail_level %s"
+    },
+    {
+      "name": "指定关卡",
+      "text": "set_level %s "
+    },
+    {
+      "name": "跳过当前波次",
+      "text": "skip_wave %s"
+    },
+    {
+      "name": "通关章节1",
+      "text": "set_chapter %s 1"
+    },
+    {
+      "name": "通关章节5",
+      "text": "set_chapter %s 5"
+    },
+    {
+      "name": "通关章节10",
+      "text": "set_chapter %s 10"
+    }
+  ],
+  "召唤": [
+    {
+      "name": "单抽",
+      "text": "gacha %s 1"
+    },
+    {
+      "name": "十连",
+      "text": "gacha %s 10"
+    },
+    {
+      "name": "必得传说",
+      "text": "gacha_legend %s 1"
+    },
+    {
+      "name": "UP池单抽",
+      "text": "gacha_up %s 1"
+    },
+    {
+      "name": "UP池十连",
+      "text": "gacha_up %s 10"
+    }
+  ],
+  "战斗": [
+    {
+      "name": "加血10%",
+      "text": "add_hp %s 10"
+    },
+    {
+      "name": "减血10%",
+      "text": "del_hp %s 10"
+    },
+    {
+      "name": "直接死亡",
+      "text": "kill %s"
+    },
+    {
+      "name": "打开AI",
+      "text": "ai_on %s"
+    },
+    {
+      "name": "关闭AI",
+      "text": "ai_off %s"
+    },
+    {
+      "name": "升一级",
+      "text": "level_up %s 1"
+    },
+    {
+      "name": "一键满级",
+      "text": "level_up %s 999"
+    },
+    {
+      "name": "添加Buff",
+      "text": "add_buff %s "
+    },
+    {
+      "name": "移除Buff",
+      "text": "remove_buff %s "
+    },
+    {
+      "name": "添加怪物",
+      "text": "add_monster %s "
+    },
+    {
+      "name": "怪物全清",
+      "text": "clear_monster %s"
+    }
+  ],
+  "公会": [
+    {
+      "name": "公会币+9999",
+      "text": "add_guild_coin %s 9999"
+    },
+    {
+      "name": "公会经验+9999",
+      "text": "add_guild_exp %s 9999"
+    },
+    {
+      "name": "公会升级",
+      "text": "guild_up %s"
+    },
+    {
+      "name": "离开公会",
+      "text": "leave_guild %s"
+    },
+    {
+      "name": "创建公会",
+      "text": "create_guild %s TestGuild"
+    }
+  ],
+  "玩家": [
+    {
+      "name": "设置昵称",
+      "text": "set_name %s TestPlayer"
+    },
+    {
+      "name": "设置等级",
+      "text": "set_level %s 999"
+    },
+    {
+      "name": "设置VIP等级",
+      "text": "set_vip %s 15"
+    },
+    {
+      "name": "解锁全功能",
+      "text": "unlock_all %s"
+    },
+    {
+      "name": "重置账户",
+      "text": "reset_account %s"
+    }
+  ],
+  "邮件": [
+    {
+      "name": "发送系统邮件",
+      "text": "send_mail %s TestMail 奖励内容"
+    }
+  ],
+  "rogue": [
+    {
+      "name": "随机卡组",
+      "text": "rogue_random_deck %s"
+    },
+    {
+      "name": "清空卡组",
+      "text": "rogue_clear_deck %s"
+    },
+    {
+      "name": "随机遗物",
+      "text": "rogue_random_relic %s"
+    },
+    {
+      "name": "遗物全解锁",
+      "text": "rogue_unlock_all_relic %s"
+    },
+    {
+      "name": "进入下一层",
+      "text": "rogue_next_floor %s"
+    },
+    {
+      "name": "rogue币+9999",
+      "text": "add_item %s 90010 9999"
+    }
+  ]
 }

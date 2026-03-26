@@ -353,15 +353,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data.commands) {
-        // 数据库已有公开指令，直接使用
-        generalCommands = JSON.parse(data.commands);
-        return;
+        const parsed = JSON.parse(data.commands);
+        // 检测是否为旧扁平格式（key 以【开头），若是则重新初始化
+        const keys = Object.keys(parsed);
+        const isOldFormat = keys.length > 0 && keys[0].startsWith('【');
+        if (!isOldFormat) {
+          generalCommands = parsed;
+          return;
+        }
       }
     } catch (e) {
       clearTimeout(timeoutId);
     }
 
-    // 数据库为空：用 commands.json 初始化公开库
+    // 数据库为空或旧格式：用 commands.json 初始化公开库
     try {
       const url = chrome.runtime.getURL('commands.json');
       const response = await fetch(url);
@@ -370,7 +375,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (Object.keys(localCmds).length === 0) return;
 
       generalCommands = localCmds;
-      // 写入数据库
       await saveGeneralToBackend();
     } catch (e) {}
   }
@@ -393,10 +397,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // ====== 动态生成分类 Tab ======
+  function buildCategoryTabs() {
+    const container = document.getElementById('category-tabs');
+    // 保留"全部"，删除其他动态 tab
+    container.querySelectorAll('.sidebar-sub-item[data-category]').forEach(el => el.remove());
+    const cats = Object.keys(generalCommands).sort();
+    cats.forEach(cat => {
+      const item = document.createElement('div');
+      item.className = 'sidebar-sub-item';
+      item.dataset.category = cat;
+      item.textContent = cat;
+      container.appendChild(item);
+    });
+    // 重新绑定分类切换事件
+    container.querySelectorAll('.sidebar-sub-item').forEach(item => {
+      item.addEventListener('click', () => {
+        container.querySelectorAll('.sidebar-sub-item').forEach(t => t.classList.remove('active'));
+        item.classList.add('active');
+        currentCategory = item.dataset.category;
+        currentKeyword = '';
+        searchInput.value = '';
+        renderButtons();
+        requestAnimationFrame(() => { requestAnimationFrame(reportHeight); });
+      });
+    });
+  }
+
   // ====== 命令加载 ======
   async function loadCommands() {
     // 加载通用指令（从数据库读取，数据库为空则用 commands.json 初始化）
     await syncGeneralFromBackend();
+    // 动态生成分类 Tab
+    buildCategoryTabs();
     // 加载个人指令
     await reloadPersonalCommands();
     renderButtons();
@@ -641,24 +674,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       return;
     } else {
-      // 通用指令：从数据库（generalCommands）读取
-      entries = Object.entries(generalCommands);
-
-      // 分类过滤
-      if (currentCategory !== 'all') {
-        entries = entries.filter(([name]) => name.includes('【' + currentCategory + '】'));
-      }
-
-      // 搜索过滤
+      // 通用指令：二维结构 { "装备": [{name, text}], ... }
       const kw = currentKeyword.trim();
-      if (kw) {
-        entries = entries.filter(([name]) => pinyinMatch(name, kw));
-      }
 
-      if (entries.length === 0) {
-        buttonsContainer.innerHTML = '<div class="search-empty">无匹配结果</div>';
+      if (currentCategory === 'all') {
+        // 显示所有分类
+        const categories = Object.keys(generalCommands).sort();
+        let hasAny = false;
+        categories.forEach(cat => {
+          const items = generalCommands[cat] || [];
+          const filtered = kw
+            ? items.filter(item => pinyinMatch(item.name, kw))
+            : items;
+          if (filtered.length === 0) return;
+          hasAny = true;
+          // 分类标题
+          const header = document.createElement('div');
+          header.className = 'category-header';
+          header.textContent = cat;
+          buttonsContainer.appendChild(header);
+          // 分类下指令
+          filtered.forEach(item => renderButton(item.name, item.text));
+        });
+        if (!hasAny) {
+          buttonsContainer.innerHTML = '<div class="search-empty">无匹配结果</div>';
+        }
       } else {
-        entries.forEach(([name, text]) => renderButton(name, text));
+        // 显示指定分类
+        const items = generalCommands[currentCategory] || [];
+        const filtered = kw
+          ? items.filter(item => pinyinMatch(item.name, kw))
+          : items;
+        if (filtered.length === 0) {
+          buttonsContainer.innerHTML = '<div class="search-empty">无匹配结果</div>';
+        } else {
+          filtered.forEach(item => renderButton(item.name, item.text));
+        }
       }
     }
   }
@@ -719,28 +770,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   searchInput.addEventListener('input', () => {
     currentKeyword = searchInput.value;
     renderButtons();
-  });
-
-  // ====== 分类子选项切换 ======
-  document.querySelectorAll('.sidebar-sub-item').forEach(item => {
-    item.addEventListener('click', () => {
-      document.querySelectorAll('.sidebar-sub-item').forEach(t => t.classList.remove('active'));
-      item.classList.add('active');
-      currentCategory = item.dataset.category;
-      currentKeyword = '';
-      searchInput.value = '';
-      // 如果当前在历史记录面板，切回 GM列表
-      const gmlistItem = document.querySelector('.sidebar-item[data-panel="gmlist"]');
-      const historyItem = document.querySelector('.sidebar-item[data-panel="history"]');
-      if (historyItem && historyItem.classList.contains('active')) {
-        document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-        document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active'));
-        gmlistItem.classList.add('active');
-        document.getElementById('panel-gmlist').classList.add('active');
-      }
-      renderButtons();
-      requestAnimationFrame(() => { requestAnimationFrame(reportHeight); });
-    });
   });
 
   // ====== 添加历史记录（去重：相同命令名则更新时间并置顶） ======
