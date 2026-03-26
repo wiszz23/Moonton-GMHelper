@@ -10,6 +10,8 @@
     const rawName = userInfo[0].text;
     chrome.storage.local.set({ gm_user_name: rawName });
   }
+  // 写入当前域名，供 panel.js 白名单校验
+  chrome.storage.local.set({ gm_current_domain: window.location.hostname });
 
   // ============================================================
   // 读取 GM 页面右上角用户信息

@@ -1,5 +1,38 @@
 document.addEventListener('DOMContentLoaded', async () => {
   try {
+  // ====== 白名单检查：只有白名单域名才允许同步和操作后端 ======
+  const STORAGE_KEY = 'gm_whitelist';
+  const DEFAULT_WHITELIST_HOSTS = [
+    'gm.pre.nova.moonton.com',
+    'gm.nova.oa.mt',
+    'gm-cn.yyf.muyinetwork.com',
+    'gm.jp.novagames.net',
+    'gm.usa.novagames.net'
+  ];
+
+  // 提取纯域名（去掉协议和端口）
+  function extractHost(str) {
+    return str.replace(/^https?:\/\//, '').replace(/:\d+$/, '').replace(/\/.*$/, '').trim();
+  }
+
+  async function isAllowedDomain() {
+    try {
+      const [domainResult, whitelistResult] = await Promise.all([
+        chrome.storage.local.get('gm_current_domain'),
+        chrome.storage.local.get(STORAGE_KEY)
+      ]);
+      const currentHost = extractHost(domainResult.gm_current_domain || '');
+      const hosts = whitelistResult[STORAGE_KEY]
+        ? whitelistResult[STORAGE_KEY].split(/[\n,]/).map(h => extractHost(h)).filter(Boolean)
+        : DEFAULT_WHITELIST_HOSTS;
+      return hosts.some(h => currentHost.includes(h) || h.includes(currentHost));
+    } catch (e) {
+      console.error('[GM助手] 白名单检查出错:', e);
+      return false;
+    }
+  }
+
+  // ====== DOM 引用 ======
   const inputText = document.getElementById('input-text');
   const buttonsContainer = document.getElementById('buttons-container');
   const statusArea = document.getElementById('status-area');
@@ -24,14 +57,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modalCmdCategory = document.getElementById('modal-cmd-category');
   const modalTitle = document.getElementById('modal-title');
 
-  let commands = {};
+  let commands = {};         // 本地 commands.json（仅作首次初始化兜底）
+  let generalCommands = {};   // 通用指令（从数据库 public 读取）
   let personalCommands = [];
   let currentTab = 'general';
   let editingIndex = -1;
   let history = [];
   let currentUserName = '';
-  const BACKEND_URL = 'http://localhost:3000';
+  let isInWhitelist = false;
+  const BACKEND_URL = 'http://10.30.138.5:3000';
   const BACKEND_TIMEOUT = 5000; // 后端请求超时 5 秒
+
+  // ====== 启动时检查白名单 ======
+  isInWhitelist = await isAllowedDomain();
+  if (!isInWhitelist) {
+    document.body.innerHTML = '<div style="padding:16px;color:#e57373;">GM助手：当前页面不在白名单中，无法使用。</div>';
+    return;
+  }
 
   // ====== 通过轮询 chrome.storage.local 获取用户名 ======
   (async function pollUserName() {
@@ -78,6 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ====== 从后端拉取个人指令（5秒超时，失败用本地兜底） ======
   async function syncFromBackend(owner) {
+    if (!isInWhitelist) return null;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT);
     try {
@@ -97,13 +140,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (e) {
       clearTimeout(timeoutId);
-      // 超时或网络错误 → 使用本地兜底
     }
     return null;
   }
 
   // ====== 上传个人指令到后端（5秒超时，失败不报错） ======
   async function syncToBackend(owner, cmds) {
+    if (!isInWhitelist) return;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT);
     try {
@@ -129,11 +172,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const remoteCmds = await syncFromBackend(currentUserName);
     if (remoteCmds && remoteCmds.length > 0) {
-      // 后端优先，本地同步后端
       personalCommands = remoteCmds;
       await saveLocalPersonalCommands(personalCommands);
     } else if (localCmds.length > 0) {
-      // 本地兜底，上传到后端
       personalCommands = localCmds;
       await syncToBackend(currentUserName, personalCommands);
     } else {
@@ -280,16 +321,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   saveWhitelistBtn.addEventListener('click', async () => {
     const lines = whitelistInput.value.split('\n').map(l => l.trim()).filter(Boolean);
     const text = lines.join('\n');
-    console.log('[GM助手] 保存白名单:', text);
     try {
       if (typeof chrome !== 'undefined' && chrome.storage) {
         await chrome.storage.local.set({ gm_whitelist: text });
-        console.log('[GM助手] 保存成功');
-      } else {
-        console.warn('[GM助手] chrome.storage 不可用');
       }
     } catch (e) {
-      console.error('[GM助手] 保存失败:', e);
+      console.error('[GM助手] 保存白名单失败:', e);
     }
     showStatus('白名单已保存，已同步生效');
     settingsPanel.classList.add('hidden');
@@ -297,27 +334,69 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function getDefaultWhitelist() {
     return [
-      'http://gm.pre.nova.moonton.com:8201',
-      'http://gm.nova.oa.mt:8201',
-      'https://gm-cn.yyf.muyinetwork.com:8201',
-      'https://gm.jp.novagames.net:8201',
-      'https://gm.usa.novagames.net:8201'
+      'gm.pre.nova.moonton.com',
+      'gm.nova.oa.mt',
+      'gm-cn.yyf.muyinetwork.com',
+      'gm.jp.novagames.net',
+      'gm.usa.novagames.net'
     ];
+  }
+
+  // ====== 从后端拉取公开通用指令，数据库为空则用 commands.json 初始化 ======
+  async function syncGeneralFromBackend() {
+    if (!isInWhitelist) return;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT);
+    try {
+      const resp = await fetch(`${BACKEND_URL}/api/commands/public`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (data.commands) {
+        // 数据库已有公开指令，直接使用
+        generalCommands = JSON.parse(data.commands);
+        return;
+      }
+    } catch (e) {
+      clearTimeout(timeoutId);
+    }
+
+    // 数据库为空：用 commands.json 初始化公开库
+    try {
+      const url = chrome.runtime.getURL('commands.json');
+      const response = await fetch(url);
+      if (!response.ok) return;
+      const localCmds = await response.json();
+      if (Object.keys(localCmds).length === 0) return;
+
+      generalCommands = localCmds;
+      // 写入数据库
+      await saveGeneralToBackend();
+    } catch (e) {}
+  }
+
+  // ====== 保存公开通用指令到后端 ======
+  async function saveGeneralToBackend() {
+    if (!isInWhitelist) return;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT);
+    try {
+      await fetch(`${BACKEND_URL}/api/commands/public`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commands: JSON.stringify(generalCommands) }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+    } catch (e) {
+      clearTimeout(timeoutId);
+    }
   }
 
   // ====== 命令加载 ======
   async function loadCommands() {
-    try {
-      const url = chrome.runtime.getURL('commands.json');
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      commands = await response.json();
-      console.log('[GM助手] 加载了', Object.keys(commands).length, '条通用指令');
-    } catch (err) {
-      console.error('[GM助手] 加载指令失败:', err);
-      commands = {};
-      buttonsContainer.innerHTML = '<div class="search-empty">指令加载失败，请刷新重试</div>';
-    }
+    // 加载通用指令（从数据库读取，数据库为空则用 commands.json 初始化）
+    await syncGeneralFromBackend();
     // 加载个人指令
     await reloadPersonalCommands();
     renderButtons();
@@ -562,8 +641,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       return;
     } else {
-      // 通用指令：从 commands.json 取
-      entries = Object.entries(commands);
+      // 通用指令：从数据库（generalCommands）读取
+      entries = Object.entries(generalCommands);
 
       // 分类过滤
       if (currentCategory !== 'all') {
