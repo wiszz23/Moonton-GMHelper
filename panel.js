@@ -91,7 +91,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const whitelistInput = document.getElementById('whitelist-input');
   const saveWhitelistBtn = document.getElementById('save-whitelist-btn');
-  const settingsInfo = document.getElementById('settings-info');
 
   const addCmdBtn = document.getElementById('add-cmd-btn');
   const cmdModal = document.getElementById('add-cmd-modal');
@@ -237,6 +236,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ================================================================
   //  个人数据：后端同步（合并结构）
   // ================================================================
+  function safeParse(raw) {
+    if (!raw) return null;
+    if (typeof raw === 'object') return raw; // 已是对象不需解析
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+
   async function syncPersonalDataFromBackend(owner) {
     if (!isInWhitelist) return null;
     const ctrl = new AbortController();
@@ -247,7 +252,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data.commands) {
-        const parsed = JSON.parse(data.commands);
+        let parsed = safeParse(data.commands);
+        if (!parsed) return null;
         // 新格式：{categories: [...], commands: [...]}，否则为旧格式（纯数组）
         const isNewFormat = parsed && typeof parsed === 'object' && !Array.isArray(parsed);
         return {
@@ -261,27 +267,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     return null;
   }
 
-  async function syncPersonalDataToBackend(owner, categories, commands) {
+  // 带重试的后端同步（最多 3 次，间隔 1 秒）
+  async function syncPersonalDataToBackend(owner, categories, commands, retries = 3) {
     if (!isInWhitelist) return;
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
-    try {
-      await fetch(`${BACKEND_URL}/api/commands`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ owner, commands: JSON.stringify({ categories, commands }) }),
-        signal: ctrl.signal
-      });
-      clearTimeout(tid);
-    } catch (e) { clearTimeout(tid); }
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
+      try {
+        const resp = await fetch(`${BACKEND_URL}/api/commands`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ owner, commands: JSON.stringify({ categories, commands }) }),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (resp.ok) return; // 成功
+        console.warn(`[GM面板] 后端同步失败(尝试 ${attempt}/${retries}): HTTP ${resp.status}`);
+      } catch (e) {
+        clearTimeout(tid);
+        console.warn(`[GM面板] 后端同步失败(尝试 ${attempt}/${retries}): ${e.message}`);
+      }
+      if (attempt < retries) await new Promise(r => setTimeout(r, 1000));
+    }
+    console.error('[GM面板] 后端同步已达最大重试次数，数据已保存在本地');
   }
 
-  async function reloadPersonalCommands() {
+  async function reloadPersonalCommands(waitForSync = false) {
     const localCmds = await loadLocalPersonalCommands();
-    if (!currentUserName) {
+    const localCats = await loadLocalPersonalCategories();
+
+    // 本地已有数据 → 本地为准，以后端为备份目标
+    if (localCmds.length > 0 || localCats.length > 0) {
       personalCommands = localCmds;
+      personalCategories = localCats;
+      if (currentUserName) {
+        const syncPromise = syncPersonalDataToBackend(currentUserName, personalCategories, personalCommands);
+        if (waitForSync) await syncPromise; // 初始化时等同步完成再继续
+      }
       return;
     }
+
+    // 本地为空（首次访问）→ 从后端拉取
+    if (!currentUserName) { personalCommands = []; return; }
     const remote = await syncPersonalDataFromBackend(currentUserName);
     if (remote && (remote.categories.length > 0 || remote.commands.length > 0)) {
       personalCommands = remote.commands;
@@ -289,10 +316,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       await saveLocalPersonalCommands(personalCommands);
       await saveLocalPersonalCategories(personalCategories);
       await saveLocalPersonalFull(remote);
-    } else if (localCmds.length > 0) {
-      personalCommands = localCmds;
-      const cats = await loadLocalPersonalCategories();
-      await syncPersonalDataToBackend(currentUserName, cats, personalCommands);
     } else {
       personalCommands = [];
     }
@@ -347,24 +370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.stopPropagation();
         openEditCategoryModal(cat);
       });
-      // 删除按钮
-      const delBtn = document.createElement('button');
-      delBtn.className = 'del-cat-btn';
-      delBtn.textContent = '×';
-      delBtn.title = '删除分组';
-      delBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        personalCategories = personalCategories.filter(c => c !== cat);
-        await saveLocalPersonalCategories(personalCategories);
-        buildPersonalCategoryTabs();
-        if (currentPerCategory === cat) {
-          currentPerCategory = 'all';
-          renderPersonalButtons();
-        }
-        showPerStatus('已删除分组: ' + cat);
-      });
       actions.appendChild(editBtn);
-      actions.appendChild(delBtn);
       item.appendChild(label);
       item.appendChild(actions);
       item.addEventListener('click', () => {
@@ -463,7 +469,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push({ cmd, i });
       });
-      Object.keys(grouped).sort().forEach(cat => {
+      // 渲染顺序：personalCategories 已有分组 → 排在最后的未知分组（如导入的）
+      // Set 保证顺序且不重复
+      const allCatOrder = [...new Set([...personalCategories, ...Object.keys(grouped)])];
+      allCatOrder.forEach(cat => {
+        if (!grouped[cat]) return;
         if (!kw) {
           const header = document.createElement('div');
           header.className = 'category-header';
@@ -500,22 +510,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       openEditPersonalModal(index);
     });
 
-    const delBtn = document.createElement('button');
-    delBtn.className = 'personal-action-btn delete-btn';
-    delBtn.textContent = '×';
-    delBtn.title = '删除';
-    delBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const removed = personalCommands.splice(index, 1)[0];
-      await saveLocalPersonalCommands(personalCommands);
-      if (currentUserName) await syncPersonalDataToBackend(currentUserName, personalCategories, personalCommands);
-      showPerStatus('已删除: ' + removed.name);
-      renderPersonalButtons();
-      reportHeight();
-    });
-
     actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
     wrap.appendChild(actions);
     perContainer.appendChild(wrap);
   }
@@ -526,24 +521,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function executeGeneral(commandName, commandTemplate) {
     const text = genInput.value.trim();
     if (!text) { showGenStatus('角色ID不能为空', true); genInput.focus(); return; }
-    await executeInPage(text, commandTemplate, genAutoRun.checked);
+    const result = await executeInPage(text, commandTemplate, genAutoRun.checked);
     await addHistory(commandName, commandTemplate, text, 'general');
-    showGenStatus('执行: ' + commandName);
+    if (result?.found) {
+      showGenStatus('已执行: ' + commandName);
+    } else {
+      showGenStatus('未找到命令输入框', true);
+    }
   }
 
   async function executePersonal(commandName, commandTemplate) {
     const text = perInput.value.trim();
     if (!text) { showPerStatus('角色ID不能为空', true); perInput.focus(); return; }
-    await executeInPage(text, commandTemplate, perAutoRun.checked);
+    const result = await executeInPage(text, commandTemplate, perAutoRun.checked);
     await addHistory(commandName, commandTemplate, text, 'personal');
-    showPerStatus('执行: ' + commandName);
+    if (result?.found) {
+      showPerStatus('已执行: ' + commandName);
+    } else {
+      showPerStatus('未找到命令输入框', true);
+    }
   }
 
   async function executeInPage(roleIds, commandTemplate, autoRun) {
-    const allTabs = await chrome.tabs.query({});
-    const GM_DOMAINS = ['gm.pre.nova.moonton.com', 'gm.nova.oa.mt', 'gm-cn.yyf.muyinetwork.com', 'gm.jp.novagames.net', 'gm.usa.novagames.net'];
-    const gmTab = allTabs.find(t => t.url && GM_DOMAINS.some(d => t.url.includes(d)));
-    if (!gmTab) { showGenStatus('未找到GM页面', true); return; }
+    // 直接获取当前活动 tab，而不是搜索所有 GM tab
+    const [gmTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!gmTab || !gmTab.id) { showGenStatus('无法获取当前页面', true); return; }
+    console.log('[GM面板] 目标tab:', gmTab.url);
 
     const hasPlaceholder = commandTemplate.includes('%s') || commandTemplate.includes('%');
     let finalText;
@@ -556,28 +559,70 @@ document.addEventListener('DOMContentLoaded', async () => {
       finalText = commandTemplate;
     }
 
-    await chrome.scripting.executeScript({
+    const results = await chrome.scripting.executeScript({
       target: { tabId: gmTab.id },
-      func: (sel, ifSel, txt, run) => {
+      func: (sel, ifSel, txt, run, tabUrl) => {
         function runInDoc(doc) {
           const el = doc.querySelector(sel);
           if (el) {
-            if (el.tagName === 'TEXTAREA') el.value = txt;
-            else if (el.tagName === 'INPUT') el.value = txt.replace(/\n/g, ' ');
-            else if (el.isContentEditable) el.innerHTML = txt.replace(/\n/g, '<br>');
-            ['input', 'change', 'blur'].forEach(type => el.dispatchEvent(new Event(type, { bubbles: true })));
-            if (run) { const b = doc.getElementById('ctl_run'); if (b && b.click) b.click(); }
+            // 聚焦 + 填值
+            el.focus();
+            el.value = txt;
+            el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: txt }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            el.dispatchEvent(new Event('blur', { bubbles: true }));
+            // jQuery autocomplete 触发
+            const $el = window.$ ? $(el) : (window.jQuery ? jQuery(el) : null);
+            if ($el) {
+              $el.val(txt).trigger('input').trigger('change');
+              if ($el.autocomplete) {
+                $el.autocomplete('search', txt);
+              }
+            }
+            if (run) {
+              const b = doc.getElementById('ctl_run');
+              if (b) { b.focus(); b.click(); }
+            }
             return true;
           }
           return false;
         }
-        if (runInDoc(document)) return true;
-        (document.querySelectorAll(ifSel) || document.querySelectorAll('iframe')).forEach(iframe => {
-          try { if (runInDoc(iframe.contentDocument || iframe.contentWindow.document)) return; } catch (e) {}
+        if (runInDoc(document)) return { found: true, in: 'main' };
+
+        // 提取目标域名，用于匹配正确的 iframe
+        let targetHost = '';
+        try { targetHost = new URL(tabUrl).hostname; } catch(e) {}
+
+        // 分离出：src 匹配当前域名的 iframe vs 其他 iframe
+        const priorityIframes = [];
+        const fallbackIframes = [];
+        document.querySelectorAll(ifSel).forEach(iframe => {
+          try {
+            const src = iframe.src || '';
+            if (targetHost && src.includes(targetHost)) {
+              priorityIframes.push(iframe);
+            } else {
+              fallbackIframes.push(iframe);
+            }
+          } catch(e) {}
         });
+
+        // 优先尝试域名匹配的 iframe
+        const tryIframes = [...priorityIframes, ...fallbackIframes];
+        for (const iframe of tryIframes) {
+          try {
+            if (runInDoc(iframe.contentDocument || iframe.contentWindow.document)) {
+              return { found: true, in: iframe.src || iframe.name || 'iframe' };
+            }
+          } catch (e) { return { found: false, error: e.message, in: 'iframe-cross-origin' }; }
+        }
+        return { found: false, iframes: Array.from(document.querySelectorAll('iframe')).map(f => ({ src: f.src, name: f.name, id: f.id, class: f.className })) };
       },
-      args: ['#ctl_gmcmd', "iframe[name='ifa']", finalText, autoRun]
+      args: ['#ctl_gmcmd', 'iframe#ifa, iframe[name="ifa"], iframe.iframe, iframe.ifa', finalText, autoRun, gmTab.url]
     });
+    const result = results[0]?.result;
+    console.log('[GM面板] executeInPage 结果:', result);
+    return result;
   }
 
   // ================================================================
@@ -603,32 +648,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!history.length) { historyEmpty.style.display = 'block'; clearHistoryBtn.style.display = 'none'; return; }
     historyEmpty.style.display = 'none';
     clearHistoryBtn.style.display = 'block';
-    history.forEach(entry => {
+    history.forEach((entry, idx) => {
       const item = document.createElement('div');
       item.className = 'history-item';
-      item.innerHTML = `
-        <div class="history-item-header">
-          <span class="history-name">${escapeHtml(entry.name)}</span>
-          <span class="history-time">${entry.time}</span>
-        </div>
-        <div class="history-ids">角色ID: ${escapeHtml(entry.roleIds || '-')}</div>
-        <div class="history-command">${escapeHtml(entry.command.substring(0, 60))}${entry.command.length > 60 ? '...' : ''}</div>
-      `;
+
+      const header = document.createElement('div');
+      header.className = 'history-item-header';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'history-name';
+      nameSpan.textContent = entry.name;
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'history-time';
+      timeSpan.textContent = entry.time;
+      header.appendChild(nameSpan);
+      header.appendChild(timeSpan);
+
+      const idsRow = document.createElement('div');
+      idsRow.className = 'history-ids';
+      const idsLabel = document.createElement('span');
+      idsLabel.textContent = '角色ID: ';
+      const idsInput = document.createElement('input');
+      idsInput.type = 'text';
+      idsInput.className = 'history-id-input';
+      idsInput.value = entry.roleIds || '';
+      idsInput.placeholder = '角色ID';
+
+      const cmdDiv = document.createElement('div');
+      cmdDiv.className = 'history-command';
+
+      // 根据当前 roleIds 动态更新详情显示
+      function updateCmdDisplay() {
+        const ids = idsInput.value.trim();
+        history[idx].roleIds = ids;
+        chrome.storage.local.set({ gm_history: history });
+        let display = entry.command;
+        if (ids && display.includes('%s')) {
+          display = display.replace(/%s/g, ids);
+        } else if (ids) {
+          display = display.replace(/(\S+)/g, (m) => ids + ' ' + m);
+        }
+        cmdDiv.textContent = display.length > 60 ? display.substring(0, 60) + '...' : display;
+        cmdDiv.title = display;
+      }
+
+      idsInput.addEventListener('input', updateCmdDisplay);
+      updateCmdDisplay();
+
+      idsRow.appendChild(idsLabel);
+      idsRow.appendChild(idsInput);
+
       const btn = document.createElement('button');
       btn.className = 'history-exec-btn';
       btn.textContent = '▶ 快速执行';
       btn.addEventListener('click', async () => {
         const targetTab = entry.tab || 'general';
+        const ids = idsInput.value.trim();
         if (targetTab === 'general') {
-          genInput.value = entry.roleIds || '';
-          await executeInPage(entry.roleIds || '', entry.command, genAutoRun.checked);
-          showGenStatus('执行: ' + entry.name);
+          genInput.value = ids;
+          const result = await executeInPage(ids, entry.command, genAutoRun.checked);
+          showGenStatus(result?.found ? '已执行: ' + entry.name : '未找到命令输入框');
         } else {
-          perInput.value = entry.roleIds || '';
-          await executeInPage(entry.roleIds || '', entry.command, perAutoRun.checked);
-          showPerStatus('执行: ' + entry.name);
+          perInput.value = ids;
+          const result = await executeInPage(ids, entry.command, perAutoRun.checked);
+          showPerStatus(result?.found ? '已执行: ' + entry.name : '未找到命令输入框');
         }
       });
+
+      item.appendChild(header);
+      item.appendChild(idsRow);
+      item.appendChild(cmdDiv);
       item.appendChild(btn);
       historyList.appendChild(item);
     });
@@ -716,46 +804,126 @@ document.addEventListener('DOMContentLoaded', async () => {
       const r = await chrome.storage.local.get(STORAGE_KEY);
       whitelistInput.value = r[STORAGE_KEY] || DEFAULT_WHITELIST_HOSTS.join('\n');
     } catch (e) { whitelistInput.value = DEFAULT_WHITELIST_HOSTS.join('\n'); }
-    const cats = Object.keys(generalCommands).sort();
-    settingsInfo.textContent = `通用分类 ${cats.length} 个 · 个人指令 ${personalCommands.length} 条 · 历史记录 ${history.length} 条`;
     requestAnimationFrame(reportHeight);
   }
 
-  document.getElementById('dedup-btn').addEventListener('click', async () => {
-    const btn = document.getElementById('dedup-btn');
+  document.getElementById('export-personal-btn').addEventListener('click', async () => {
+    // 点击时实时查 storage，避免等轮询
+    const r = await chrome.storage.local.get('gm_user_name');
+    const rawName = (r?.gm_user_name || '').trim();
+    if (!rawName) {
+      showGenStatus('未获取到用户名，请刷新 GM 页面');
+      return;
+    }
+    currentUserName = rawName;
+    const btn = document.getElementById('export-personal-btn');
     btn.disabled = true;
-    btn.textContent = '清理中...';
+    btn.textContent = '导出中...';
     try {
-      const resp = await fetch(`${BACKEND_URL}/api/dedup`, { method: 'POST' });
-      if (resp.ok) {
-        showGenStatus('重复数据已清理');
-      } else {
-        const err = await resp.json();
-        showGenStatus('清理失败: ' + (err.detail || err.error));
-      }
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
+      const resp = await fetch(`${BACKEND_URL}/api/commands/${encodeURIComponent(currentUserName)}`, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const json = data.commands ? JSON.parse(data.commands) : { categories: [], commands: [] };
+      const exportData = {
+        owner: currentUserName,
+        updated_at: data.updated_at || new Date().toISOString(),
+        ...json
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = (data.updated_at || new Date().toISOString()).replace(/[:.]/g, '-').slice(0, 19);
+      a.href = url;
+      a.download = `gm-personal-${currentUserName.replace(/[()（）]/g, '')}-${ts}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showGenStatus('导出成功');
     } catch (e) {
-      showGenStatus('清理失败: 网络错误');
+      showGenStatus('导出失败: ' + e.message);
     }
     btn.disabled = false;
-    btn.textContent = '清理重复数据';
+    btn.textContent = '导出 JSON';
   });
 
-  document.getElementById('reset-general-btn').addEventListener('click', async () => {
+  const importFileInput = document.getElementById('import-file-input');
+  document.getElementById('import-personal-btn').addEventListener('click', () => {
+    importFileInput.click();
+  });
+  importFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const btn = document.getElementById('import-personal-btn');
+    btn.disabled = true;
+    btn.textContent = '导入中...';
     try {
-      const url = chrome.runtime.getURL('commands.json');
-      const r = await fetch(url);
-      if (!r.ok) { showGenStatus('重置失败'); return; }
-      const local = await r.json();
-      generalCommands = local;
-      await saveGeneralToBackend();
-      buildGeneralCategoryTabs();
-      renderGeneralButtons();
-      showGenStatus('通用指令已重置');
-      const cats = Object.keys(generalCommands).sort();
-      settingsInfo.textContent = `通用分类 ${cats.length} 个 · 个人指令 ${personalCommands.length} 条 · 历史记录 ${history.length} 条`;
+      const text = await file.text();
+      const imported = JSON.parse(text);
+      const categories = imported.categories || [];
+      const commands = imported.commands || [];
+
+      let addedCats = 0;
+      let addedCmds = 0;
+
+      // 第一步：收集所有要合并的分组
+      //    1. imported.categories 里明确声明的分组
+      //    2. imported.commands 里指令引用的分组（可能 categories 字段漏填了）
+      const allImportCats = new Set(categories);
+      commands.forEach(cmd => {
+        const cat = (cmd.category || '').trim();
+        if (cat) allImportCats.add(cat);
+      });
+
+      // 第二步：增量合并分组
+      allImportCats.forEach(cat => {
+        if (!personalCategories.includes(cat)) {
+          personalCategories.push(cat);
+          addedCats++;
+        }
+      });
+
+      // 第三步：增量合并指令（按 name 去重）
+      const existingNames = new Set(personalCommands.map(c => c.name));
+      commands.forEach(cmd => {
+        if (!existingNames.has(cmd.name)) {
+          // 指令引用的分组若已在上一步合并进来了，这里直接用即可
+          personalCommands.push({ name: cmd.name, text: cmd.text, category: cmd.category || '' });
+          addedCmds++;
+        }
+      });
+
+      await saveLocalPersonalCategories(personalCategories);
+      await saveLocalPersonalCommands(personalCommands);
+      await saveLocalPersonalFull({ categories: personalCategories, commands: personalCommands });
+
+      // 同步后端（点击时实时读 storage，不依赖 currentUserName 轮询）
+      const r = await chrome.storage.local.get('gm_user_name');
+      const rawName = (r?.gm_user_name || '').trim();
+      if (rawName) {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
+        try {
+          await fetch(`${BACKEND_URL}/api/commands`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner: rawName, commands: JSON.stringify({ categories: personalCategories, commands: personalCommands }) }),
+            signal: ctrl.signal
+          });
+          clearTimeout(tid);
+        } catch (e) { clearTimeout(tid); }
+      }
+
+      buildPersonalCategoryTabs();
+      renderPersonalButtons();
+      showGenStatus(`导入完成：新增 ${addedCats} 个分组、${addedCmds} 条指令`);
     } catch (e) {
-      showGenStatus('重置失败: ' + e.message);
+      showGenStatus('导入失败: ' + e.message);
     }
+    btn.disabled = false;
+    btn.textContent = '导入 JSON';
+    importFileInput.value = '';
   });
 
   saveWhitelistBtn.addEventListener('click', async () => {
@@ -768,7 +936,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   //  分组弹窗（创建/编辑）
   // ================================================================
   const catModalTitle = document.getElementById('cat-modal-title');
-  const catDeleteRow = document.getElementById('cat-delete-row');
+  const catDeleteZone = document.getElementById('cat-delete-zone');
+  const catDivider = document.getElementById('cat-divider');
   const modalCatDeleteBtn = document.getElementById('modal-cat-delete-btn');
   let editingCategory = null; // null=创建模式，string=编辑模式
 
@@ -777,7 +946,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     catModalTitle.textContent = '编辑分组';
     modalCatConfirmBtn.textContent = '保存';
     modalCatName.value = cat;
-    catDeleteRow.classList.remove('hidden');
+    catDeleteZone.classList.remove('hidden');
+    catDivider.classList.remove('hidden');
     catModal.classList.remove('hidden');
     modalCatName.focus();
     modalCatName.select();
@@ -788,7 +958,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     catModalTitle.textContent = '新建分组';
     modalCatConfirmBtn.textContent = '创建';
     modalCatName.value = '';
-    catDeleteRow.classList.add('hidden');
+    catDeleteZone.classList.add('hidden');
+    catDivider.classList.add('hidden');
     catModal.classList.remove('hidden');
     modalCatName.focus();
   });
@@ -843,6 +1014,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     buildPersonalCategoryTabs();
     showPerStatus('已删除分组: ' + editingCategory);
     catModal.classList.add('hidden');
+    catDeleteZone.classList.add('hidden');
+    catDivider.classList.add('hidden');
     editingCategory = null;
     requestAnimationFrame(() => { requestAnimationFrame(reportHeight); });
   });
@@ -876,6 +1049,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  const modalDeleteZone = document.getElementById('modal-delete-zone');
+  const modalDivider = document.getElementById('modal-divider');
+  const modalDeleteCmdBtn = document.getElementById('modal-delete-cmd-btn');
+
   addCmdBtn.addEventListener('click', () => {
     editingIndex = -1;
     modalTitle.textContent = '添加自定义指令';
@@ -884,6 +1061,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     modalCmdText.value = '';
     modalCmdCategory.value = '';
     populateCategoryTags('');
+    modalDeleteZone.classList.add('hidden');
+    modalDivider.classList.add('hidden');
     cmdModal.classList.remove('hidden');
     modalCmdName.focus();
   });
@@ -897,6 +1076,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     modalCmdText.value = cmd.text;
     modalCmdCategory.value = cmd.category || '';
     populateCategoryTags(cmd.category || '');
+    modalDeleteZone.classList.remove('hidden');
+    modalDivider.classList.remove('hidden');
     cmdModal.classList.remove('hidden');
     modalCmdName.focus();
   }
@@ -904,6 +1085,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   closeModalBtn.addEventListener('click', () => cmdModal.classList.add('hidden'));
   modalCancelBtn.addEventListener('click', () => cmdModal.classList.add('hidden'));
   cmdModal.addEventListener('click', (e) => { if (e.target === cmdModal) cmdModal.classList.add('hidden'); });
+
+  modalDeleteCmdBtn.addEventListener('click', async () => {
+    if (editingIndex < 0) return;
+    const removed = personalCommands.splice(editingIndex, 1)[0];
+    await saveLocalPersonalCommands(personalCommands);
+    if (currentUserName) await syncPersonalDataToBackend(currentUserName, personalCategories, personalCommands);
+    cmdModal.classList.add('hidden');
+    showPerStatus('已删除: ' + removed.name);
+    renderPersonalButtons();
+    requestAnimationFrame(() => { requestAnimationFrame(reportHeight); });
+  });
 
   modalConfirmBtn.addEventListener('click', async () => {
     const name = modalCmdName.value.trim();
@@ -947,6 +1139,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   //  初始化
   // ================================================================
 
+  // 读取用户名并打印
+  chrome.storage.local.get('gm_user_name', r => {
+    console.log('[GM面板] gm_user_name =', r?.gm_user_name);
+  });
+
+  // 读取白名单并打印
+  chrome.storage.local.get(STORAGE_KEY, r => {
+    console.log('[GM面板] gm_whitelist =', r?.[STORAGE_KEY]);
+  });
+
   // 「全部」按钮事件（静态元素，需手动绑定）
   document.querySelector('#general-category-list .left-sidebar-item[data-category="all"]')?.addEventListener('click', () => {
     document.querySelectorAll('#general-category-list .left-sidebar-item').forEach(t => t.classList.remove('active'));
@@ -969,10 +1171,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('[GM面板] ===== 开始初始化 =====');
   await syncGeneralFromBackend();
   console.log('[GM面板] syncGeneralFromBackend 完成后, generalCommands keys:', Object.keys(generalCommands).join(', '));
+
+  // 必须等个人数据全部加载完成再渲染 UI，避免闪烁和默认值污染
   await reloadPersonalCategories();
+  await reloadPersonalCommands(true); // 等待后端同步完成
+
   buildGeneralCategoryTabs();
   buildPersonalCategoryTabs();
-  await reloadPersonalCommands();
   renderGeneralButtons();
   renderPersonalButtons();
 
@@ -997,8 +1202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentUserName = rawName;
             await reloadPersonalCategories();
             buildPersonalCategoryTabs();
-            await reloadPersonalCommands();
-            await saveLocalPersonalFull({ categories: personalCategories, commands: personalCommands });
+            await reloadPersonalCommands(true); // 等待后端同步完成
             renderPersonalButtons();
           }
           return;

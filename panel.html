@@ -37,7 +37,7 @@
           </div>
           <div class="options-row">
             <div class="checkbox-group">
-              <input type="checkbox" id="auto-run-checkbox" checked>
+              <input type="checkbox" id="auto-run-checkbox">
               <label for="auto-run-checkbox">自动执行</label>
             </div>
           </div>
@@ -70,7 +70,7 @@
           </div>
           <div class="options-row">
             <div class="checkbox-group">
-              <input type="checkbox" id="auto-run-personal" checked>
+              <input type="checkbox" id="auto-run-personal">
               <label for="auto-run-personal">自动执行</label>
             </div>
             <button id="add-cmd-btn" class="add-cmd-btn" title="添加指令">+ 添加指令</button>
@@ -93,7 +93,7 @@
 
     <!-- ====== 设置页面 ====== -->
     <div id="page-settings" class="tab-page">
-      <div class="main-panel history-full">
+      <div class="settings-scroll">
         <div class="settings-page-block">
           <div class="settings-page-title">域名白名单</div>
           <div class="settings-page-desc">每行一个域名，支持子域名匹配</div>
@@ -103,18 +103,13 @@
           <button id="save-whitelist-btn" class="save-btn" style="margin-top:4px;">保存白名单</button>
         </div>
         <div class="settings-page-block">
-          <div class="settings-page-title">面板信息</div>
-          <div class="settings-page-desc" id="settings-info">加载中...</div>
-        </div>
-        <div class="settings-page-block">
-          <div class="settings-page-title">通用指令</div>
-          <button id="reset-general-btn" class="save-btn" style="background: linear-gradient(135deg, #c62828 0%, #ef5350 100%);">重置为本地默认</button>
-          <div class="settings-page-desc">将通用指令恢复为本地 commands.json 默认配置（会覆盖数据库中的数据）</div>
-        </div>
-        <div class="settings-page-block">
-          <div class="settings-page-title">数据库维护</div>
-          <button id="dedup-btn" class="save-btn" style="background: linear-gradient(135deg, #e65100 0%, #ff6d00 100%);">清理重复数据</button>
-          <div class="settings-page-desc">删除同一用户名的重复记录，保留最新一条</div>
+          <div class="settings-page-title">个人数据</div>
+          <div class="settings-btns-row">
+            <button id="export-personal-btn" class="save-btn" style="flex:1; background: linear-gradient(135deg, #0277bd 0%, #03a9f4 100%);">导出 JSON</button>
+            <button id="import-personal-btn" class="save-btn" style="flex:1;">导入 JSON</button>
+          </div>
+          <div class="settings-page-desc">导出：将个人指令和分组导出为 JSON 文件 · 导入：增量合并，追加缺失的分组和指令，不覆盖已有数据</div>
+          <input type="file" id="import-file-input" accept=".json" style="display:none">
         </div>
       </div>
     </div>
@@ -136,13 +131,14 @@
           <label for="modal-cat-name">分组名称</label>
           <input type="text" id="modal-cat-name" placeholder="例如：我的装备" maxlength="20">
         </div>
-        <div id="cat-delete-row" class="modal-delete-row hidden">
-          <button id="modal-cat-delete-btn" class="modal-delete-btn">删除此分组</button>
-        </div>
       </div>
       <div class="modal-footer">
         <button id="modal-cat-cancel-btn" class="modal-cancel-btn">取消</button>
         <button id="modal-cat-confirm-btn" class="modal-confirm-btn">创建</button>
+      </div>
+      <div class="modal-divider hidden" id="cat-divider"></div>
+      <div class="modal-delete-zone hidden" id="cat-delete-zone">
+        <button id="modal-cat-delete-btn" class="modal-delete-btn">删除此分组</button>
       </div>
     </div>
   </div>
@@ -173,6 +169,10 @@
       <div class="modal-footer">
         <button id="modal-cancel-btn" class="modal-cancel-btn">取消</button>
         <button id="modal-confirm-btn" class="modal-confirm-btn">添加</button>
+      </div>
+      <div class="modal-divider hidden" id="modal-divider"></div>
+      <div id="modal-delete-zone" class="modal-delete-zone hidden">
+        <button id="modal-delete-cmd-btn" class="modal-delete-btn">删除此指令</button>
       </div>
     </div>
   </div>

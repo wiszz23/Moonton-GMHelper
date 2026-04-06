@@ -1,72 +1,178 @@
 // content_script.js
 (function() {
-  // 不再直接 return，允许 init() 进来处理最小化残留情况
-
   const STORAGE_KEY = 'gm_whitelist';
 
-  // ====== GM 页面内容脚本：读取用户名后写入 chrome.storage.local ======
-  const userInfo = readUserInfo();
-  if (userInfo && userInfo.length > 0) {
-    const rawName = userInfo[0].text;
-    const safeName = (rawName || '').trim();
-    if (safeName) {
-      chrome.storage.local.set({ gm_user_name: safeName });
-    }
-  }
-  // 写入当前域名，供 panel.js 白名单校验
+  // 写入当前域名（同步可用）
   chrome.storage.local.set({ gm_current_domain: window.location.hostname });
 
   // ============================================================
   // 读取 GM 页面右上角用户信息
   // ============================================================
-  function readUserInfo() {
-    try {
-      const selectors = [
-      '.el-dropdown-menu__item',
-      '.el-dropdown .el-dropdown-link',
-      '.el-dropdown-selfdefine',
-      '.user-info',
-      '.user-name',
-      '.header-user',
-      '.nav-user',
-      '[class*="user"]',
-      '[class*="user-name"]',
-      '[class*="userInfo"]',
-      '.el-avatar + *',
-      'img.el-avatar + *',
-      '[title]',
-      ];
 
+  // 已知的错误匹配值，直接排除
+  const KNOWN_BAD_TEXTS = new Set([
+    '性能概况', 'undefined', 'null', '登录', '注册',
+    '退出', 'logout', 'sign out', '设置', 'settings',
+    '个人中心', '用户中心', '我的', '首页', '帮助',
+  ]);
+
+  // 获取元素向上 N 层的路径描述（用于日志定位）
+  function getParentChain(el, depth) {
+    const parts = [];
+    let cur = el;
+    for (let i = 0; i < depth && cur; i++) {
+      const tag = cur.tagName || '';
+      const cls  = cur.className && typeof cur.className === 'string'
+                     ? '.' + cur.className.split(' ').slice(0, 2).join('.') : '';
+      const id   = cur.id ? '#' + cur.id : '';
+      parts.unshift(tag + cls + id);
+      cur = cur.parentElement;
+    }
+    return parts.join(' → ');
+  }
+
+  // 判断文本是否像真实的"用户名(账号)"格式
+  function looksLikeUsername(text) {
+    // 典型格式：中文名(英文账号) 或 纯英文账号
+    return (
+      (text.includes('(') && text.includes(')')) ||  // "名字(账号)"
+      /^[a-zA-Z][a-zA-Z0-9_]{2,}$/.test(text)         // "Wis"
+    );
+  }
+
+  // 给匹配结果打分，越高越可能是真实用户名
+  function scoreMatch(text) {
+    let score = 0;
+    if (looksLikeUsername(text)) score += 10;
+    if (text.includes('(') && !text.includes(')')) score -= 5;
+    if (/[\u4e00-\u9fa5]/.test(text)) score += 3; // 含中文
+    if (/\([a-zA-Z]/.test(text)) score += 3;        // "(英文字母)" 典型GM账号格式
+    if (text.length <= 30) score += 2;
+    if (text.length > 40) score -= 2;
+    return score;
+  }
+
+  // 读取 GM 页面右上角用户名
+  // DOM 结构固定：用户名 = .el-dropdown-menu 中第一个 <li> 的直接文本（非 <a>/<span> 子元素内容）
+  function readUserInfo() {
     const results = [];
 
-    selectors.forEach(sel => {
-      try {
-        const el = document.querySelector(sel);
-        if (el && el.textContent.trim().length > 0 && el.textContent.trim().length < 50) {
-          results.push({ sel, text: el.textContent.trim(), tag: el.tagName.toLowerCase() });
+    // =========================================================
+    // 策略一（最优先）：直接扫描所有 .el-dropdown-menu 的第一个 <li>
+    // Element Plus 标准结构：第一个 <li> 直接文本 = 用户名，其余是菜单项
+    // 额外验证：用户名所在 dropdown 里一定有头像元素（区分用户区下拉 vs 普通功能下拉）
+    // =========================================================
+    try {
+      const dropdowns = document.querySelectorAll('.el-dropdown-menu');
+      dropdowns.forEach((menu, idx) => {
+        const firstLi = menu.querySelector('li:first-child');
+        if (!firstLi) return;
+        // 只取直接文本节点，忽略 <a>/<span> 等子元素的文本
+        const directText = Array.from(firstLi.childNodes)
+          .filter(n => n.nodeType === Node.TEXT_NODE)
+          .map(n => n.textContent)
+          .join('')
+          .trim();
+        if (!directText || directText.length > 60) return;
+        if (KNOWN_BAD_TEXTS.has(directText)) return;
+        // 用户名不含 <a> 或 <span> 子元素（修改密码/退出登录都在子元素里）
+        const hasChildLink = firstLi.querySelector('a, span');
+        if (hasChildLink) return;
+        // 头像身份验证（menu 父容器链）：
+        // 从 menu.parentElement 向上遍历，如果某个祖先包含 .el-avatar 则为用户区下拉
+        // 因为头像和 menu 同在 .avatar-container（也是 .el-dropdown）内，menu.parentElement 就是它
+        let menuCtx = menu.parentElement;
+        let hasAvatar = false;
+        for (let i = 0; i < 6 && menuCtx; i++) {
+          if (menuCtx.classList && (
+            menuCtx.classList.contains('avatar-container') ||
+            menuCtx.classList.contains('avatarContainer') ||
+            menuCtx.classList.contains('el-dropdown') ||
+            menuCtx.classList.contains('header-user') ||
+            menuCtx.classList.contains('user-info')
+          )) {
+            hasAvatar = !!(menuCtx.querySelector('.el-avatar, img.el-avatar, .user-avatar'));
+            break;
+          }
+          menuCtx = menuCtx.parentElement;
         }
-      } catch(e) {}
-    });
+        // 无头像的 dropdown（普通功能下拉）降分，不作为主要候选
+        const score = scoreMatch(directText) + (hasAvatar ? 10 : -5);
+        console.log('[GM助手] [策略一-dropdown首项] 匹配:', JSON.stringify(directText), '| 评分:', score, '| dropdownIdx:', idx, '| hasAvatar:', hasAvatar);
+        results.push({ sel: 'dropdown-first-li', text: directText, score, tag: 'li', hasAvatar });
+      });
+    } catch(e) {}
 
+    // =========================================================
+    // 策略二：从头像 el-avatar 出发，在其所在 dropdown 中找用户名
+    // =========================================================
+    try {
+      const avatars = document.querySelectorAll('.el-avatar, img.el-avatar');
+      avatars.forEach((avatar, idx) => {
+        // 从头像向上找最近的 .el-dropdown 容器
+        let cur = avatar.parentElement;
+        let dropdownRoot = null;
+        for (let i = 0; i < 6 && cur; i++) {
+          if (cur.classList && (cur.classList.contains('el-dropdown') || cur.classList.contains('el-dropdown__wrapper'))) {
+            dropdownRoot = cur;
+            break;
+          }
+          cur = cur.parentElement;
+        }
+        if (!dropdownRoot) return;
+        // 找第一个不含子元素链接的 <li>
+        const items = dropdownRoot.querySelectorAll('.el-dropdown-menu__item, .el-dropdown-menu__item--divided');
+        items.forEach(item => {
+          if (item.querySelector('a, span')) return; // 跳过有链接/按钮的菜单项
+          const text = (item.textContent || '').trim();
+          if (!text || text.length > 60 || KNOWN_BAD_TEXTS.has(text)) return;
+          if (!looksLikeUsername(text)) return;
+          const score = scoreMatch(text) + 5;
+          console.log('[GM助手] [策略二-头像锚点] 匹配:', JSON.stringify(text), '| 评分:', score, '| avatarIdx:', idx);
+          results.push({ sel: 'avatar-anchor', text, score, tag: 'li' });
+        });
+      });
+    } catch(e) {}
+
+    // =========================================================
+    // 策略三（兜底）：TreeWalker 扫描全 DOM，含中文+括号的文本
+    // =========================================================
     try {
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-      const names = [];
       let node;
       while (node = walker.nextNode()) {
-        const t = node.textContent.trim();
-        if (t.length > 2 && t.length < 60 && t.includes('(') && /[\u4e00-\u9fa5]/.test(t)) {
-          names.push(t);
+        const t = (node.textContent || '').trim();
+        if (t.length < 4 || t.length > 60) continue;
+        if (!/[\u4e00-\u9fa5]/.test(t)) continue;
+        if (!t.includes('(') || !t.includes(')')) continue;
+        if (KNOWN_BAD_TEXTS.has(t)) continue;
+        // 跳过在 <a>/<span> 子元素里的文本（菜单项）
+        let parent = node.parentElement;
+        let isMenuItem = false;
+        for (let i = 0; i < 3 && parent; i++) {
+          if (parent.tagName === 'A' || (parent.tagName === 'SPAN' && parent.className.includes('el-dropdown'))) {
+            isMenuItem = true; break;
+          }
+          parent = parent.parentElement;
         }
-      }
-      if (names.length > 0) {
-        results.push({ sel: 'treeWalker-scan', text: names.slice(0, 5).join(' | '), tag: 'text' });
+        if (isMenuItem) continue;
+        const score = scoreMatch(t);
+        console.log('[GM助手] [策略三-treeWalker] 匹配:', JSON.stringify(t), '| 评分:', score, '| 父链:', getParentChain(node.parentElement, 4));
+        results.push({ sel: 'treeWalker', text: t, score, tag: 'text' });
       }
     } catch(e) {}
 
-    return results;
-    } catch(e) {
-      console.error('[GM助手] readUserInfo执行出错:', e);
+    // =========================================================
+    // 最终选用：评分最高者
+    // =========================================================
+    if (results.length > 0) {
+      results.sort((a, b) => (b.score || 0) - (a.score || 0));
+      const chosen = results[0];
+      console.log('[GM助手] ★ 最终选用:', JSON.stringify(chosen.text), '| 策略:', chosen.sel, '| 评分:', chosen.score);
+      return [{ sel: chosen.sel, text: chosen.text }];
     }
+    console.log('[GM助手] readUserInfo: 未找到用户名');
+    return [];
   }
 
   // 默认域名白名单（备用）
@@ -110,25 +216,58 @@
   }
 
   // 初始化：先读 storage，动态决定是否显示面板
+  // 轮询读取用户名（GM 页面内容异步加载，需要重试）
+  let userReadAttempts = 0;
+  const MAX_USER_READ_ATTEMPTS = 30;
+  function pollReadUser() {
+    userReadAttempts++;
+    const userInfo = readUserInfo();
+    if (userInfo && userInfo.length > 0) {
+      const rawName = userInfo[0].text;
+      const safeName = (rawName || '').trim();
+      console.log('[GM助手] 最终选用:', safeName, '| 来源 selector:', userInfo[0].sel, '| 重试次数:', userReadAttempts);
+      if (safeName) {
+        chrome.storage.local.set({ gm_user_name: safeName });
+      }
+      return; // 找到就停止
+    }
+    if (userReadAttempts < MAX_USER_READ_ATTEMPTS) {
+      setTimeout(pollReadUser, 1000);
+    } else {
+      console.log('[GM助手] 用户名读取已达最大重试次数(' + MAX_USER_READ_ATTEMPTS + ')，放弃');
+    }
+  }
+
   function init() {
-    chrome.storage.local.get(STORAGE_KEY, (result) => {
-      const savedText = result[STORAGE_KEY];
-      const hosts = savedText ? extractHosts(savedText) : DEFAULT_WHITELIST_HOSTS;
-      if (!isGmPage(hosts)) {
+    // 面板创建不依赖用户名是否拿到
+    const proceed = () => {
+      chrome.storage.local.get(STORAGE_KEY, (result) => {
+        const savedText = result[STORAGE_KEY];
+        const hosts = savedText ? extractHosts(savedText) : DEFAULT_WHITELIST_HOSTS;
+        if (!isGmPage(hosts)) {
+          setupStorageWatcher();
+          return;
+        }
+        const existingContainer = document.getElementById('my-plugin-panel-container');
+        if (existingContainer) {
+          setupStorageWatcher();
+          return;
+        }
+        createPanel(hosts);
         setupStorageWatcher();
-        return;
-      }
+      });
+    };
 
-      // 面板已存在：跳过，不重复创建
-      const existingContainer = document.getElementById('my-plugin-panel-container');
-      if (existingContainer) {
-        setupStorageWatcher();
-        return;
-      }
+    // 面板先创建，用户名轮询读取
+    proceed();
 
-      createPanel(hosts);
-      setupStorageWatcher();
-    });
+    // 页面就绪后开始轮询用户名读取
+    const startUserRead = () => { setTimeout(pollReadUser, 100); };
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      startUserRead();
+    } else {
+      window.addEventListener('DOMContentLoaded', () => { startUserRead(); });
+    }
   }
 
   // 监听 storage 变化，实时更新白名单（确保只注册一次）
