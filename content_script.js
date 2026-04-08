@@ -14,7 +14,36 @@
     '性能概况', 'undefined', 'null', '登录', '注册',
     '退出', 'logout', 'sign out', '设置', 'settings',
     '个人中心', '用户中心', '我的', '首页', '帮助',
+    // 新增：构建/版本信息
+    'Build #', '最近一次构建(', '构建', 'Build',
+    // 新增：语言设置
+    '中文(简体)', '中文(繁体)', '简体中文', '繁體中文', 'English',
+    // 新增：测试用例
+    '[TC-', 'TC-',
+    // 新增：监控/性能
+    '性能概况', 'ABS(', '移动设备(', '长期服务基线(',
+    // 新增：时间戳格式
+    '最近一次构建(', '#', '年月日',
+    // 新增：功能菜单（过长文本）
+    '交换源语言和目标语言', '发送时间开始计算', '有初值(包含任意)',
+    // 新增：其他常见错误
+    '全部任务', '任务', 'menu', 'Menu',
   ]);
+
+  // 正则黑名单（用于检测特定模式）
+  const KNOWN_BAD_PATTERNS = [
+    /^Build\s*#/,                        // Build #1722
+    /^#\d+\s*\(/,                        // #3 (2026年4月5日...)
+    /^\[TC-\d+\]/,                       // [TC-04] ...
+    /^最近一次构建\(#?\d+\)/,             // 最近一次构建(#305)...
+    /^\d{4}年\d+月\d+日/,                 // 2026年4月5日
+    /^中文|^繁體/,                        // 语言开头
+    /^交换|^天后|^发送/,                  // 功能菜单
+    /^(有初值|包含任意)/,                 // 查询条件
+    /^(移动设备|长期服务)/,               // 系统信息
+    /ABS\(|性能概况/,                    // 监控图表
+    /^(全部任务|任务)/,                   // 任务相关
+  ];
 
   // 获取元素向上 N 层的路径描述（用于日志定位）
   function getParentChain(el, depth) {
@@ -33,22 +62,171 @@
 
   // 判断文本是否像真实的"用户名(账号)"格式
   function looksLikeUsername(text) {
-    // 典型格式：中文名(英文账号) 或 纯英文账号
-    return (
-      (text.includes('(') && text.includes(')')) ||  // "名字(账号)"
-      /^[a-zA-Z][a-zA-Z0-9_]{2,}$/.test(text)         // "Wis"
-    );
+    const t = text.trim();
+
+    // 1. 排除管道符（多选合并）
+    if (t.includes('|')) return false;
+
+    // 2. 排除换行符
+    if (t.includes('\n')) return false;
+
+    // 3. 排除正则黑名单匹配
+    for (const pattern of KNOWN_BAD_PATTERNS) {
+      if (pattern.test(t)) return false;
+    }
+
+    // 4. 典型格式：中文名(英文账号) 如 "封庆扬(Wis)"
+    if (/^[\u4e00-\u9fa5]+[\u4e00-\u9fa5_a-zA-Z0-9]*\([a-zA-Z][a-zA-Z0-9_]*\)$/.test(t)) {
+      return true;
+    }
+
+    // 5. 纯英文账号 如 "Wis" 或 "User123"
+    if (/^[a-zA-Z][a-zA-Z0-9_]{2,20}$/.test(t)) {
+      return true;
+    }
+
+    // 6. 短英文名 如 "A" "AB" (2字符)
+    if (/^[a-zA-Z]{1,2}$/.test(t)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // 额外校验：检测是否为有效 owner（用于综合评分）
+  function isValidOwnerCandidate(text) {
+    const t = text.trim();
+
+    // 管道符 → 多选合并，绝对无效
+    if (t.includes('|')) return { valid: false, reason: 'pipe' };
+
+    // 换行符 → 多行文本，绝对无效
+    if (t.includes('\n')) return { valid: false, reason: 'newline' };
+
+    // 长度限制
+    if (t.length < 1 || t.length > 40) return { valid: false, reason: 'length' };
+
+    // 正则黑名单
+    for (const pattern of KNOWN_BAD_PATTERNS) {
+      if (pattern.test(t)) return { valid: false, reason: 'blacklist' };
+    }
+
+    // 纯中文无括号（可能是菜单/标签，但也可能是合法用户名）
+    // 注：根据业务需求，纯中文用户名（2-10字符）视为合法用户
+    // if (/^[\u4e00-\u9fa5]+$/.test(t) && !t.includes('(')) {
+    //   return { valid: false, reason: 'pure_chinese' };
+    // }
+
+    // 包含括号但不匹配用户格式
+    if (t.includes('(') && !/^[\u4e00-\u9fa5]+.*\([a-zA-Z]/.test(t)) {
+      return { valid: false, reason: 'bad_bracket' };
+    }
+
+    return { valid: true };
   }
 
   // 给匹配结果打分，越高越可能是真实用户名
   function scoreMatch(text) {
     let score = 0;
-    if (looksLikeUsername(text)) score += 10;
-    if (text.includes('(') && !text.includes(')')) score -= 5;
-    if (/[\u4e00-\u9fa5]/.test(text)) score += 3; // 含中文
-    if (/\([a-zA-Z]/.test(text)) score += 3;        // "(英文字母)" 典型GM账号格式
-    if (text.length <= 30) score += 2;
-    if (text.length > 40) score -= 2;
+    const t = text.trim();
+    const scoreDetails = []; // 评分明细
+
+    // ===== 加分项 =====
+
+    // 1. 格式正确加分
+    if (looksLikeUsername(t)) {
+      score += 15;
+      scoreDetails.push('looksLikeUsername: +15');
+    }
+
+    // 2. 中文名(英文账号) 格式 - 最典型GM账号格式
+    if (/^[\u4e00-\u9fa5]+[\u4e00-\u9fa5_a-zA-Z0-9]*\([a-zA-Z][a-zA-Z0-9_]*\)$/.test(t)) {
+      score += 10;
+      scoreDetails.push('中文名(英文)格式: +10');
+    }
+
+    // 3. 英文账号格式
+    if (/^[a-zA-Z][a-zA-Z0-9_]{2,20}$/.test(t)) {
+      score += 8;
+      scoreDetails.push('英文账号格式: +8');
+    }
+
+    // 4. 长度合理 (5-30字符最佳)
+    if (t.length >= 5 && t.length <= 30) {
+      score += 3;
+      scoreDetails.push('长度合理(' + t.length + '字符): +3');
+    } else if (t.length > 30 && t.length <= 40) {
+      score += 1;
+      scoreDetails.push('长度偏长(' + t.length + '字符): +1');
+    } else if (t.length < 3) {
+      score -= 5;
+      scoreDetails.push('长度过短(' + t.length + '字符): -5');
+    }
+
+    // ===== 扣分项 =====
+
+    // 5. 括号不匹配
+    if (t.includes('(') && !t.includes(')')) {
+      score -= 10;
+      scoreDetails.push('括号不匹配: -10');
+    }
+    if (!t.includes('(') && t.includes(')')) {
+      score -= 10;
+      scoreDetails.push('括号不匹配: -10');
+    }
+
+    // 6. 管道符（多选合并）- 严重扣分
+    if (t.includes('|')) {
+      score -= 100;
+      scoreDetails.push('含管道符: -100');
+    }
+
+    // 7. 换行符
+    if (t.includes('\n')) {
+      score -= 50;
+      scoreDetails.push('含换行符: -50');
+    }
+
+    // 8. 正则黑名单匹配 - 严重扣分
+    for (const pattern of KNOWN_BAD_PATTERNS) {
+      if (pattern.test(t)) {
+        score -= 100;
+        scoreDetails.push('命中黑名单: -100');
+        break;
+      }
+    }
+
+    // 9. 纯中文无括号（可能是菜单/标签，但也可能是合法用户名）
+    // if (/^[\u4e00-\u9fa5]+$/.test(t) && !t.includes('(')) {
+    //   score -= 20;
+    //   scoreDetails.push('纯中文无括号: -20');
+    // }
+
+    // 10. 包含特殊字符（非用户名的括号格式）
+    if (t.includes('(') && !/^[\u4e00-\u9fa5]+.*\(/.test(t) && !/\([a-zA-Z]/.test(t)) {
+      score -= 10;
+      scoreDetails.push('异常括号格式: -10');
+    }
+
+    // 11. 包含数字开头的括号格式 (可能是日期/版本)
+    if (/\(\d/.test(t)) {
+      score -= 15;
+      scoreDetails.push('括号含数字开头: -15');
+    }
+
+    // 12. 过长的文本（可能是说明文字）
+    if (t.length > 50) {
+      score -= 10;
+      scoreDetails.push('文本过长(' + t.length + '字符): -10');
+    }
+
+    // 记录评分明细
+    if (scoreDetails.length > 0) {
+      console.log('[GM助手] [评分明细] "' + t + '" | 总分: ' + score + ' | ' + scoreDetails.join(' | '));
+    } else {
+      console.log('[GM助手] [评分明细] "' + t + '" | 总分: ' + score);
+    }
+
     return score;
   }
 
@@ -57,11 +235,16 @@
   function readUserInfo() {
     const results = [];
 
+    console.log('[GM助手] ═══════════════════════════════════════════');
+    console.log('[GM助手] 🔍 开始扫描 Owner（用户名检测）');
+    console.log('[GM助手] ═══════════════════════════════════════════');
+
     // =========================================================
     // 策略一（最优先）：直接扫描所有 .el-dropdown-menu 的第一个 <li>
     // Element Plus 标准结构：第一个 <li> 直接文本 = 用户名，其余是菜单项
     // 额外验证：用户名所在 dropdown 里一定有头像元素（区分用户区下拉 vs 普通功能下拉）
     // =========================================================
+    console.log('[GM助手] [策略一] dropdown首项扫描 | 共扫描 ' + document.querySelectorAll('.el-dropdown-menu').length + ' 个下拉菜单');
     try {
       const dropdowns = document.querySelectorAll('.el-dropdown-menu');
       dropdowns.forEach((menu, idx) => {
@@ -75,6 +258,14 @@
           .trim();
         if (!directText || directText.length > 60) return;
         if (KNOWN_BAD_TEXTS.has(directText)) return;
+
+        // 使用 isValidOwnerCandidate 进行严格校验
+        const validity = isValidOwnerCandidate(directText);
+        if (!validity.valid) {
+          console.log('[GM助手] [策略一-dropdown首项] 过滤无效候选:', JSON.stringify(directText), '| 原因:', validity.reason);
+          return;
+        }
+
         // 用户名不含 <a> 或 <span> 子元素（修改密码/退出登录都在子元素里）
         const hasChildLink = firstLi.querySelector('a, span');
         if (hasChildLink) return;
@@ -106,6 +297,7 @@
     // =========================================================
     // 策略二：从头像 el-avatar 出发，在其所在 dropdown 中找用户名
     // =========================================================
+    console.log('[GM助手] [策略二] 头像锚点扫描 | 共扫描 ' + document.querySelectorAll('.el-avatar, img.el-avatar').length + ' 个头像');
     try {
       const avatars = document.querySelectorAll('.el-avatar, img.el-avatar');
       avatars.forEach((avatar, idx) => {
@@ -126,7 +318,14 @@
           if (item.querySelector('a, span')) return; // 跳过有链接/按钮的菜单项
           const text = (item.textContent || '').trim();
           if (!text || text.length > 60 || KNOWN_BAD_TEXTS.has(text)) return;
-          if (!looksLikeUsername(text)) return;
+
+          // 使用 isValidOwnerCandidate 进行严格校验
+          const validity = isValidOwnerCandidate(text);
+          if (!validity.valid) {
+            console.log('[GM助手] [策略二-头像锚点] 过滤无效候选:', JSON.stringify(text), '| 原因:', validity.reason);
+            return;
+          }
+
           const score = scoreMatch(text) + 5;
           console.log('[GM助手] [策略二-头像锚点] 匹配:', JSON.stringify(text), '| 评分:', score, '| avatarIdx:', idx);
           results.push({ sel: 'avatar-anchor', text, score, tag: 'li' });
@@ -137,6 +336,7 @@
     // =========================================================
     // 策略三（兜底）：TreeWalker 扫描全 DOM，含中文+括号的文本
     // =========================================================
+    console.log('[GM助手] [策略三] TreeWalker 兜底扫描中...');
     try {
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
       let node;
@@ -146,6 +346,14 @@
         if (!/[\u4e00-\u9fa5]/.test(t)) continue;
         if (!t.includes('(') || !t.includes(')')) continue;
         if (KNOWN_BAD_TEXTS.has(t)) continue;
+
+        // 使用 isValidOwnerCandidate 进行严格校验
+        const validity = isValidOwnerCandidate(t);
+        if (!validity.valid) {
+          console.log('[GM助手] [策略三-treeWalker] 过滤无效候选:', JSON.stringify(t), '| 原因:', validity.reason);
+          continue;
+        }
+
         // 跳过在 <a>/<span> 子元素里的文本（菜单项）
         let parent = node.parentElement;
         let isMenuItem = false;
@@ -165,13 +373,29 @@
     // =========================================================
     // 最终选用：评分最高者
     // =========================================================
+    console.log('[GM助手] ───────────────────────────────────────────');
+    console.log('[GM助手] 📊 扫描完成，共找到 ' + results.length + ' 个候选');
+
     if (results.length > 0) {
+      // 按评分排序
       results.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+      // 输出所有候选的排名
+      console.log('[GM助手] 📋 候选排名:');
+      results.forEach((r, idx) => {
+        const marker = idx === 0 ? '👑' : '  ';
+        console.log('[GM助手]   ' + marker + ' #' + (idx + 1) + ' "' + r.text + '" | 策略: ' + r.sel + ' | 评分: ' + r.score);
+      });
+
       const chosen = results[0];
-      console.log('[GM助手] ★ 最终选用:', JSON.stringify(chosen.text), '| 策略:', chosen.sel, '| 评分:', chosen.score);
+      console.log('[GM助手] ═══════════════════════════════════════════');
+      console.log('[GM助手] ★ 最终选用: "' + chosen.text + '"');
+      console.log('[GM助手]    策略: ' + chosen.sel + ' | 评分: ' + chosen.score);
+      console.log('[GM助手] ═══════════════════════════════════════════');
       return [{ sel: chosen.sel, text: chosen.text }];
     }
-    console.log('[GM助手] readUserInfo: 未找到用户名');
+    console.log('[GM助手] ❌ 未找到有效的用户名');
+    console.log('[GM助手] ═══════════════════════════════════════════');
     return [];
   }
 
