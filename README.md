@@ -59,7 +59,7 @@ GMHelper/
 | 天赋 | 天赋点 +100、天赋全满、天赋重置 |
 | 核心 | 核心经验 +99999、核心满级、核心重置 |
 | 宝石 | 宝石 +99/+999、宝石全满、宝石槽解锁 |
-| 皮肤 | 皮肤全解锁、指定皮肤 |
+| 皮肤 | 皮肤全解锁、**幻形皮肤全解锁**、指定皮肤 |
 | 枪械 | 武器 +999、武器满级、弹药 +999、枪械重置 |
 | 城墙 | 城墙血量满、城墙满级、陷阱/箭塔/加农炮 +99 |
 | 战斗 | 加血/减血、直接死亡、AI开关、升一级/一键满级、Buff/怪物 |
@@ -129,6 +129,7 @@ GMHelper/
 ```
 gm.pre.nova.moonton.com
 gm.nova.oa.mt
+gm.aoz.moontontech.net
 gm-cn.yyf.muyinetwork.com
 gm.jp.novagames.net
 gm.usa.novagames.net
@@ -152,6 +153,69 @@ gm.usa.novagames.net
 | 后端同步失败 | 数据保留在 `chrome.storage.local`，下次访问时自动重试 |
 | 导出 | 从后端拉取最新数据，下载为 `gm-personal-{用户名}-{时间戳}.json` |
 | 导入 | 读取 JSON，增量合并（按 `name` 去重），不覆盖已有指令 |
+
+### API 端点
+
+| 方法 | 路径 | 说明 | 请求体 | 响应 |
+|------|------|------|--------|------|
+| GET | `/api/commands/public` | 获取当前公开指令列表 | — | `{ commands: "..." }`（JSON 字符串） |
+| POST | `/api/commands/public` | 更新公开指令列表 | `{ commands: "..." }` | 状态码 + data |
+| GET | `/api/commands/{owner}` | 获取某用户的个人指令 | — | `{ commands: "..." }` |
+| POST | `/api/commands` | 保存个人指令（含 owner） | `{ owner, commands: "..." }` | 状态码 + data |
+
+> **注意**：`commands` 字段是**字符串**（序列化后的 JSON），需双重解析：
+> - 外层：`JSON.parse(responseBody)` → `{ commands: "{...}" }`
+> - 内层：`JSON.parse(d.commands)` → 实际的命令对象 `{ "装备": [...], "皮肤": [...] }`
+
+### 通用指令更新流程（Node.js 脚本参考）
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│  ① curl GET /api/commands/public                            │
+│       ↓                                                      │
+│  ② 保存为 current_public.json（本地备份）                       │
+│       ↓                                                      │
+│  ③ JSON.parse(d.commands) 解析内层嵌套结构                     │
+│       ↓                                                      │
+│  ④ 执行操作：去重 + 插入新指令                                 │
+│       ↓                                                      │
+│  ⑤ JSON.stringify(cmds) 重新序列化为字符串                     │
+│       ↓                                                      │
+│  ⑥ HTTP POST /api/commands/public                           │
+│       ↓                                                      │
+│  ⑦ 打印状态码和响应                                          │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 数据模型
+
+```json
+{
+  "装备": [
+    {
+      "name": "全套橙装",
+      "text": "add_gear %s 611210 1\nadd_gear %s 612310 1\n..."
+    }
+  ],
+  "皮肤": [
+    {
+      "name": "皮肤全解锁",
+      "text": "unlock_all_skin %s"
+    },
+    {
+      "name": "幻形皮肤全解锁",
+      "text": "add_item %s 145001 1\nadd_item %s 145002 1\n..."
+    }
+  ],
+  "其他分类": [...]
+}
+```
+
+- **顶层 key**（如 `"皮肤"`）：分类名称，对应面板中的左侧 Tab 分组
+- **`name`**：按钮显示名称
+- **`text`**：实际 GM 指令文本；支持 `\n` 分隔多条命令；`%s` / `%` 为角色 ID 占位符
 
 ---
 
@@ -199,6 +263,63 @@ gm.usa.novagames.net
 | Manifest V3 | 使用 Service Worker + `chrome.storage.local`，无持久后台页 |
 | 内容隔离 | 面板 UI 在 iframe 中运行，通过 `chrome.scripting.executeScript` 与 GM 页面通信 |
 | 输入转义 | 角色 ID 通过空格分割后对每项做 `trim`，防止注入 |
+
+---
+
+## 备份工具
+
+本地备份目录 `backup/` 用于将后端数据库快照到本地，防止误改/误删后无法恢复。
+
+### 快速使用（Windows）
+
+双击 `backup/backup.bat`，按菜单选择：
+
+```
+[1] 全量备份（所有用户）
+[2] 增量对比备份（仅记录有变化的用户）
+[3] 查看备份历史
+[Q] 退出
+```
+
+### 命令行用法
+
+```bash
+# 全量备份
+node backup/backup.js
+
+# 增量对比备份（仅写入内容变化的 owner）
+node backup/backup.js --diff
+
+# 查看备份列表
+node backup/list-backups.js
+
+# 交互式恢复
+node backup/restore.js
+
+# 静默恢复最新备份全部数据
+node backup/restore.js --latest
+
+# 静默仅恢复公开指令
+node backup/restore.js --latest public
+```
+
+### 备份目录结构
+
+```
+backup/
+├── backup.js        # 备份脚本
+├── restore.js       # 恢复脚本（交互 + 静默）
+├── list-backups.js  # 查看备份历史
+├── backup.bat       # Windows 快捷入口
+└── backups/         # 备份数据（自动创建）
+    ├── index.json            # latest 指针 + 历史列表
+    └── 2026-04-08/           # 按日期归档
+        ├── manifest.json     # 备份元数据（用户数/分类数/模式等）
+        ├── public.json        # 公开通用指令快照
+        └── 张三(Wis).json     # 各用户个人指令快照
+```
+
+详细文档见 [[GMHelper/backup/README.md]]（同一目录下）
 
 ---
 

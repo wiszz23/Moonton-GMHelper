@@ -155,6 +155,10 @@
       "text": "unlock_all_skin %s"
     },
     {
+      "name": "幻形皮肤全解锁",
+      "text": "add_item %s 145001 1\nadd_item %s 145002 1\nadd_item %s 145003 1\nadd_item %s 145004 1\nadd_item %s 145005 1\nadd_item %s 145006 1\nadd_item %s 146001 1\nadd_item %s 146002 1\nadd_item %s 146003 1"
+    },
+    {
       "name": "指定皮肤",
       "text": "unlock_skin %s "
     }
@@ -283,6 +287,26 @@
     {
       "name": "发送系统邮件",
       "text": "send_mail %s TestMail 奖励内容"
+    }
+  ],
+  "佣兵": [
+    {
+      "name": "佣兵道具全解锁",
+      "text": "add_item %s 5001 1000\nadd_item %s 5002 1000\nadd_item %s 5003 1000"
+    },
+    {
+      "name": "佣兵道具清理",
+      "text": "clear_item %s 5001 1000\nclear_item %s 5002 1000\nclear_item %s 5003 1000"
+    },
+    {
+      "name": "复合化肥",
+      "text": "add_item %s 4003 1"
+    }
+  ],
+  "账号": [
+    {
+      "name": "添加全部道具",
+      "text": "add_weapon %s 135000 1\nadd_weapon %s 135001 1\nadd_weapon %s 135002 1\nadd_weapon %s 135003 1\nadd_weapon %s 135004 1\nadd_weapon %s 135005 1\nadd_weapon %s 135006 1\nadd_weapon %s 136001 1\nadd_weapon %s 136002 1\nadd_weapon %s 136003 1\nadd_item %s 2010 10\nadd_item %s 2020 10\nadd_item %s 2030 10\nadd_item %s 2040 10\nadd_item %s 2050 10\nadd_item %s 2060 10\nadd_item %s 2070 10\nadd_item %s 2080 10\nadd_item %s 2090 10\nadd_item %s 2100 10\nadd_item %s 2110 10\nadd_item %s 2120 10\nadd_item %s 30004 30\nadd_item %s 30005 30\nadd_item %s 30006 30\nadd_item %s 30007 30\nadd_item %s 30008 30\nadd_item %s 30009 30\nadd_item %s 4 10\nadd_item %s 30010 50\nadd_item %s 30100 50\nadd_item %s 30111 50\nadd_item %s 3002 100\nadd_item %s 101 50\nadd_item %s 999 999\nadd_item %s 1050 100\nadd_item %s 1051 100\nadd_hero %s 20120\nadd_hero %s 20210\nadd_hero %s 20620\nadd_hero %s 20410\nadd_item %s 104000 100\nadd_item %s 104001 100\nadd_item %s 104002 100\nadd_item %s 104003 100\nadd_item %s 104004 100\nadd_item %s 105001 100\nadd_item %s 105002 100\nadd_item %s 105003 100\nadd_item %s 106001 100\nadd_item %s 106002 100\nadd_item %s 106003 100"
     }
   ]
 }

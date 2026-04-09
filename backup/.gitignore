@@ -1,0 +1,5 @@
+# 排除备份数据（按日期归档，体积可能很大）
+backups/
+
+# 排除 node_modules 符号链接（如有）
+# node_modules/

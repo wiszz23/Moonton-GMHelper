@@ -403,6 +403,7 @@
   const DEFAULT_WHITELIST_HOSTS = [
     'gm.pre.nova.moonton.com',
     'gm.nova.oa.mt',
+    'gm.aoz.moontontech.net',
     'gm-cn.yyf.muyinetwork.com',
     'gm.jp.novagames.net',
     'gm.usa.novagames.net'
