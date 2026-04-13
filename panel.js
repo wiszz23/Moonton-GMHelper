@@ -63,10 +63,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const BACKEND_URL = 'http://10.30.138.5:3000';
   const BACKEND_TIMEOUT = 5000;
 
+  const ORDER_KEY_GENERAL    = 'gm_general_order';
+  const ORDER_KEY_PERSONAL   = 'gm_personal_order';
+  const ORDER_KEY_GEN_CATS   = 'gm_general_categories_order';
+  const ORDER_KEY_PER_CATS   = 'gm_personal_categories_order';
+
   let currentTab = 'general';           // 'general' | 'personal' | 'history'
   let generalCommands = {};            // { "装备": [{name, text}], ... }
   let personalCommands = [];           // [{name, text, category}]
   let personalCategories = [];         // ['装备', '道具', ...]
+  let generalOrder  = {};             // { "装备": ["name1", "name2", ...], ... }
+  let personalOrder = {};             // { "我的分组": ["name1", "name2", ...] }
+  let generalCategoriesOrder  = [];  // ['装备', '道具', ...]  通用分类 Tab 顺序
+  let personalCategoriesOrder = [];   // ['我的分组', '装备', ...] 个人分类 Tab 顺序
 
   let currentGenKeyword = '';
   let currentGenCategory = 'all';
@@ -140,6 +149,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           throw new Error('old format');
         }
         generalCommands = parsed;
+        // 同步分类顺序（追加新分类到末尾）
+        const backendCats = Object.keys(parsed);
+        const existingSet = new Set(generalCategoriesOrder);
+        backendCats.forEach(cat => { if (!existingSet.has(cat)) generalCategoriesOrder.push(cat); });
+        if (generalCategoriesOrder.length > backendCats.length) {
+          // 有被删除的分类 → 裁剪到仅保留仍存在的
+          generalCategoriesOrder = generalCategoriesOrder.filter(c => backendCats.includes(c));
+        }
         console.log('[GM面板] 通用指令从后端加载成功，分类:', Object.keys(parsed).join(', '));
         return;
       } else {
@@ -197,7 +214,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function reloadPersonalCategories() {
     const local = await loadLocalPersonalCategories();
-    if (!currentUserName) { personalCategories = local; return; }
+    if (!currentUserName) {
+      personalCategories = local;
+      // 首次初始化 personalCategoriesOrder
+      if (!personalCategoriesOrder.length) {
+        personalCategoriesOrder = [...local];
+        await savePersonalCategoriesOrder();
+      }
+      return;
+    }
     // 从本地已存的完整数据中取 categories
     try {
       const r = await chrome.storage.local.get('gm_personal_full');
@@ -205,10 +230,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (full && full.categories && Array.isArray(full.categories) && full.categories.length > 0) {
         personalCategories = full.categories;
         await saveLocalPersonalCategories(personalCategories);
+        // 首次初始化 personalCategoriesOrder
+        if (!personalCategoriesOrder.length) {
+          personalCategoriesOrder = [...personalCategories];
+          await savePersonalCategoriesOrder();
+        }
         return;
       }
     } catch (e) {}
     personalCategories = local;
+    if (!personalCategoriesOrder.length) {
+      personalCategoriesOrder = [...local];
+      await savePersonalCategoriesOrder();
+    }
   }
 
   // ================================================================
@@ -330,7 +364,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const list = document.getElementById('general-category-list');
     // 只删动态生成的分类项，保留"全部"
     list.querySelectorAll('.left-sidebar-item:not([data-category="all"])').forEach(el => el.remove());
-    const cats = Object.keys(generalCommands).sort();
+
+    const allCats = Object.keys(generalCommands);
+    // 应用存储的顺序：新分类追加到末尾
+    const orderMap = {};
+    generalCategoriesOrder.forEach((cat, i) => { orderMap[cat] = i; });
+    const ordered = allCats
+      .filter(c => c in orderMap)
+      .sort((a, b) => orderMap[a] - orderMap[b]);
+    const newCats = allCats.filter(c => !(c in orderMap));
+    const cats = [...ordered, ...newCats];
+
     cats.forEach(cat => {
       const item = document.createElement('div');
       item.className = 'left-sidebar-item';
@@ -351,7 +395,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   function buildPersonalCategoryTabs() {
     const list = document.getElementById('personal-category-list');
     list.querySelectorAll('.left-sidebar-item:not([data-category="all"])').forEach(el => el.remove());
-    personalCategories.forEach(cat => {
+
+    // 应用存储的 Tab 顺序：新分类追加到末尾
+    const orderMap = {};
+    personalCategoriesOrder.forEach((cat, i) => { orderMap[cat] = i; });
+    const ordered = personalCategories
+      .filter(c => c in orderMap)
+      .sort((a, b) => orderMap[a] - orderMap[b]);
+    const newCats = personalCategories.filter(c => !(c in orderMap));
+    const cats = [...ordered, ...newCats];
+
+    cats.forEach(cat => {
       const item = document.createElement('div');
       item.className = 'left-sidebar-item';
       item.dataset.category = cat;
@@ -387,6 +441,200 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ================================================================
+  //  拖拽排序
+  // ================================================================
+  function initDragDrop(containerSelector, isGeneral) {
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+    let draggedEl = null;
+    let dragStarted = false;       // 是否已进入拖拽模式
+    let startX = 0, startY = 0;
+    const DRAG_THRESHOLD = 8;      // 超过 8px 才认定是拖拽
+
+    container.addEventListener('pointerdown', e => {
+      const wrap = e.target.closest('.personal-btn-wrap');
+      if (!wrap || e.target.closest('.personal-action-btn, .edit-btn, .delete-btn')) return;
+      draggedEl = wrap;
+      startX = e.clientX;
+      startY = e.clientY;
+      dragStarted = false;
+      // 不在这里 preventDefault / setPointerCapture，等确认是拖拽再说
+    });
+
+    container.addEventListener('pointermove', e => {
+      if (!draggedEl || dragStarted) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return; // 未超过阈值，当点击处理
+
+      // 正式进入拖拽模式：抢回 pointer capture，修改样式
+      dragStarted = true;
+      draggedEl.setPointerCapture(e.pointerId);
+      draggedEl.style.opacity = '0.4';
+      draggedEl.style.cursor = 'grabbing';
+    });
+
+    container.addEventListener('pointermove', e => {
+      if (!draggedEl || !dragStarted) return;
+      const rects = [...container.querySelectorAll('.personal-btn-wrap')];
+      const midY = e.clientY;
+      let insertBefore = null;
+      for (const r of rects) {
+        if (r === draggedEl) continue;
+        const rr = r.getBoundingClientRect();
+        if (midY < rr.top + rr.height / 2) { insertBefore = r; break; }
+      }
+      if (insertBefore) {
+        container.insertBefore(draggedEl, insertBefore);
+      } else {
+        container.appendChild(draggedEl);
+      }
+    });
+
+    container.addEventListener('pointerup', e => {
+      if (!draggedEl) return;
+      if (dragStarted) {
+        draggedEl.style.opacity = '';
+        draggedEl.style.cursor = '';
+        draggedEl.releasePointerCapture(e.pointerId);
+
+        // 收集当前 DOM 顺序
+        const wraps = [...container.querySelectorAll('.personal-btn-wrap')];
+        const names = wraps.map(w => (w.dataset.name || w.querySelector('.button').textContent.trim()));
+
+        const category = isGeneral ? currentGenCategory : currentPerCategory;
+        if (isGeneral) {
+          generalOrder[category] = names;
+          saveGeneralOrder();
+        } else {
+          personalOrder[category] = names;
+          savePersonalOrder();
+        }
+      }
+      draggedEl = null;
+      dragStarted = false;
+    });
+  }
+
+  // ================================================================
+  //  分类 Tab 拖拽排序（排除「全部」）
+  // ================================================================
+  function initSidebarDragDrop(listSelector, isGeneral) {
+    const list = document.querySelector(listSelector);
+    if (!list) return;
+    let draggedEl = null;
+    let dragStarted = false;
+    let startX = 0, startY = 0;
+    const DRAG_THRESHOLD = 8;
+
+    list.addEventListener('pointerdown', e => {
+      const item = e.target.closest('.left-sidebar-item:not([data-category="all"])');
+      if (!item) return;
+      if (e.target.closest('.cat-actions, .edit-cat-btn')) return;
+      draggedEl = item;
+      startX = e.clientX;
+      startY = e.clientY;
+      dragStarted = false;
+    });
+
+    list.addEventListener('pointermove', e => {
+      if (!draggedEl || dragStarted) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+
+      dragStarted = true;
+      draggedEl.setPointerCapture(e.pointerId);
+      draggedEl.style.opacity = '0.4';
+      draggedEl.style.cursor = 'grabbing';
+    });
+
+    list.addEventListener('pointermove', e => {
+      if (!draggedEl || !dragStarted) return;
+      const items = [...list.querySelectorAll('.left-sidebar-item:not([data-category="all"])')];
+      const midY = e.clientY;
+      let insertBefore = null;
+      for (const r of items) {
+        if (r === draggedEl) continue;
+        const rr = r.getBoundingClientRect();
+        if (midY < rr.top + rr.height / 2) { insertBefore = r; break; }
+      }
+      if (insertBefore) {
+        list.insertBefore(draggedEl, insertBefore);
+      } else {
+        list.appendChild(draggedEl);
+      }
+    });
+
+    list.addEventListener('pointerup', e => {
+      if (!draggedEl) return;
+      if (dragStarted) {
+        draggedEl.style.opacity = '';
+        draggedEl.style.cursor = '';
+        draggedEl.releasePointerCapture(e.pointerId);
+
+        // 收集当前 DOM 顺序（排除「全部」）
+        const cats = [...list.querySelectorAll('.left-sidebar-item:not([data-category="all"])')]
+          .map(el => el.dataset.category);
+
+        if (isGeneral) {
+          generalCategoriesOrder = cats;
+          saveGeneralCategoriesOrder();
+        } else {
+          personalCategoriesOrder = cats;
+          personalCategories = cats;
+          saveLocalPersonalCategories(personalCategories);
+          savePersonalCategoriesOrder();
+        }
+      }
+      draggedEl = null;
+      dragStarted = false;
+    });
+  }
+
+  // ================================================================
+  //  排序数据加载 / 持久化
+  // ================================================================
+  async function loadGeneralOrder() {
+    const r = await chrome.storage.local.get(ORDER_KEY_GENERAL);
+    generalOrder = r[ORDER_KEY_GENERAL] || {};
+  }
+  async function loadPersonalOrder() {
+    const r = await chrome.storage.local.get(ORDER_KEY_PERSONAL);
+    personalOrder = r[ORDER_KEY_PERSONAL] || {};
+  }
+  async function saveGeneralOrder() {
+    await chrome.storage.local.set({ [ORDER_KEY_GENERAL]: generalOrder });
+  }
+  async function savePersonalOrder() {
+    await chrome.storage.local.set({ [ORDER_KEY_PERSONAL]: personalOrder });
+  }
+  async function loadGeneralCategoriesOrder() {
+    const r = await chrome.storage.local.get(ORDER_KEY_GEN_CATS);
+    generalCategoriesOrder = r[ORDER_KEY_GEN_CATS] || [];
+  }
+  async function loadPersonalCategoriesOrder() {
+    const r = await chrome.storage.local.get(ORDER_KEY_PER_CATS);
+    personalCategoriesOrder = r[ORDER_KEY_PER_CATS] || [];
+  }
+  async function saveGeneralCategoriesOrder() {
+    await chrome.storage.local.set({ [ORDER_KEY_GEN_CATS]: generalCategoriesOrder });
+  }
+  async function savePersonalCategoriesOrder() {
+    await chrome.storage.local.set({ [ORDER_KEY_PER_CATS]: personalCategoriesOrder });
+  }
+
+  function applyOrder(items, orderList) {
+    if (!orderList || !orderList.length) return items;
+    const map = {};
+    items.forEach(it => { map[it.name] = it; });
+    const result = [];
+    orderList.forEach(name => { if (map[name]) { result.push(map[name]); delete map[name]; } });
+    Object.values(map).forEach(it => result.push(it)); // 兜底：新增指令放末尾
+    return result;
+  }
+
+  // ================================================================
   //  渲染通用指令按钮
   // ================================================================
   function pinyinMatch(name, keyword) {
@@ -417,7 +665,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           header.textContent = cat;
           genContainer.appendChild(header);
         }
-        filtered.forEach(it => renderGeneralButton(it.name, it.text));
+        const ordered = applyOrder(filtered, generalOrder[cat] || []);
+        ordered.forEach(it => renderGeneralButton(it.name, it.text));
       });
       if (!shown) genContainer.innerHTML = '<div class="search-empty">无匹配结果</div>';
     } else {
@@ -426,7 +675,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!filtered.length) {
         genContainer.innerHTML = '<div class="search-empty">无匹配结果</div>';
       } else {
-        filtered.forEach(it => renderGeneralButton(it.name, it.text));
+        const ordered = applyOrder(filtered, generalOrder[currentGenCategory] || []);
+        ordered.forEach(it => renderGeneralButton(it.name, it.text));
       }
     }
   }
@@ -434,6 +684,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderGeneralButton(name, text) {
     const wrap = document.createElement('div');
     wrap.className = 'personal-btn-wrap';
+    wrap.dataset.name = name;
     const btn = document.createElement('button');
     btn.className = 'button';
     btn.textContent = name;
@@ -463,34 +714,48 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // 对当前分类应用排序（all 视图时按当前选中分类取 order）
+    const perOrderKey = currentPerCategory === 'all'
+      ? personalCategories[0] || ''   // all 视图不特别排序，保持原顺序
+      : currentPerCategory;
+    const orderedFiltered = applyOrder(
+      filtered.map(({ cmd, i }) => cmd),
+      personalOrder[perOrderKey] || []
+    );
+    // 重建 index 映射：order 后的 cmd.name → 原始 personalCommands 中的 index
+    const nameToIdx = {};
+    personalCommands.forEach((cmd, idx) => { nameToIdx[cmd.name] = idx; });
+
     if (currentPerCategory === 'all') {
       const grouped = {};
-      filtered.forEach(({ cmd, i }) => {
+      orderedFiltered.forEach(cmd => {
         const cat = cmd.category || '(不分组)';
         if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push({ cmd, i });
+        grouped[cat].push(cmd);
       });
       // 渲染顺序：personalCategories 已有分组 → 排在最后的未知分组（如导入的）
       // Set 保证顺序且不重复
       const allCatOrder = [...new Set([...personalCategories, ...Object.keys(grouped)])];
       allCatOrder.forEach(cat => {
         if (!grouped[cat]) return;
+        const catOrdered = applyOrder(grouped[cat], personalOrder[cat] || []);
         if (!kw) {
           const header = document.createElement('div');
           header.className = 'category-header';
           header.textContent = cat;
           perContainer.appendChild(header);
         }
-        grouped[cat].forEach(({ cmd, i }) => renderPersonalButton(cmd.name, cmd.text, i));
+        catOrdered.forEach(cmd => renderPersonalButton(cmd.name, cmd.text, nameToIdx[cmd.name]));
       });
     } else {
-      filtered.forEach(({ cmd, i }) => renderPersonalButton(cmd.name, cmd.text, i));
+      orderedFiltered.forEach(cmd => renderPersonalButton(cmd.name, cmd.text, nameToIdx[cmd.name]));
     }
   }
 
   function renderPersonalButton(name, text, index) {
     const wrap = document.createElement('div');
     wrap.className = 'personal-btn-wrap';
+    wrap.dataset.name = name;
     const btn = document.createElement('button');
     btn.className = 'button';
     btn.textContent = name;
@@ -976,6 +1241,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // 创建模式
       if (personalCategories.includes(name)) { showPerStatus('分组已存在'); return; }
       personalCategories.push(name);
+      personalCategoriesOrder.push(name);  // 同步 Tab 顺序
       showPerStatus('已创建分组: ' + name);
     } else {
       // 编辑模式
@@ -983,6 +1249,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (personalCategories.includes(name)) { showPerStatus('分组名已存在'); return; }
         const idx = personalCategories.indexOf(editingCategory);
         if (idx !== -1) personalCategories[idx] = name;
+        const orderIdx = personalCategoriesOrder.indexOf(editingCategory);
+        if (orderIdx !== -1) personalCategoriesOrder[orderIdx] = name;  // 同步 Tab 顺序
         // 更新已有指令的分类
         personalCommands.forEach(cmd => { if (cmd.category === editingCategory) cmd.category = name; });
         await saveLocalPersonalCommands(personalCommands);
@@ -1002,6 +1270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   modalCatDeleteBtn.addEventListener('click', async () => {
     if (!editingCategory) return;
     personalCategories = personalCategories.filter(c => c !== editingCategory);
+    personalCategoriesOrder = personalCategoriesOrder.filter(c => c !== editingCategory);  // 同步 Tab 顺序
     // 该分组下的指令归入空分组
     personalCommands.forEach(cmd => { if (cmd.category === editingCategory) cmd.category = ''; });
     await saveLocalPersonalCategories(personalCategories);
@@ -1177,10 +1446,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   await reloadPersonalCategories();
   await reloadPersonalCommands(true); // 等待后端同步完成
 
+  await loadGeneralOrder();
+  await loadPersonalOrder();
+  await loadGeneralCategoriesOrder();
+  await loadPersonalCategoriesOrder();
+
   buildGeneralCategoryTabs();
   buildPersonalCategoryTabs();
   renderGeneralButtons();
   renderPersonalButtons();
+
+  initDragDrop('#buttons-container', true);
+  initDragDrop('#personal-buttons-container', false);
+  initSidebarDragDrop('#general-category-list', true);
+  initSidebarDragDrop('#personal-category-list', false);
 
   // 观察高度变化
   const genObs = new MutationObserver(reportHeight);

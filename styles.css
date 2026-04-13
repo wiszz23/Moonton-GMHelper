@@ -1092,3 +1092,36 @@ textarea::placeholder {
 .clear-history-btn:hover {
   background: linear-gradient(135deg, #757575 0%, #9e9e9e 100%);
 }
+
+/* ============================================================
+   拖拽排序
+   ============================================================ */
+.personal-btn-wrap {
+  cursor: grab;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  touch-action: none;
+}
+.personal-btn-wrap:active,
+.personal-btn-wrap.dragging {
+  cursor: grabbing;
+  opacity: 0.5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.personal-btn-wrap.drag-over {
+  border: 1px dashed #4a9eff;
+  background: #e8f0fe;
+  border-radius: 6px;
+}
+
+/* ============================================================
+   分类 Tab 拖拽排序
+   ============================================================ */
+.left-sidebar-item {
+  cursor: grab;
+  transition: opacity 0.15s;
+  touch-action: none;
+}
+.left-sidebar-item:active {
+  cursor: grabbing;
+  opacity: 0.4;
+}
