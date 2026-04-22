@@ -616,7 +616,7 @@
   "道具": [
     {
       "name": "全部道具",
-      "text": "add_item %s 3001 10000\nadd_item %s 3011 10000\nadd_item %s 3012 10000\nadd_item %s 3013 10000\nadd_item %s 3014 10000\nadd_item %s 3015 10000\nadd_item %s 3016 10000\nadd_item %s 999 10000\nadd_item %s 1 10000"
+      "text": "add_weapon %s 135000 1\nadd_weapon %s 135001 1\nadd_weapon %s 135002 1\nadd_weapon %s 135003 1\nadd_weapon %s 135004 1\nadd_weapon %s 135005 1\nadd_weapon %s 135006 1\nadd_weapon %s 136001 1\nadd_weapon %s 136002 1\nadd_weapon %s 136003 1\nadd_item %s 2010 10\nadd_item %s 2020 10\nadd_item %s 2030 10\nadd_item %s 2040 10\nadd_item %s 2050 10\nadd_item %s 2060 10\nadd_item %s 2070 10\nadd_item %s 2080 10\nadd_item %s 2090 10\nadd_item %s 2100 10\nadd_item %s 2110 10\nadd_item %s 2120 10\nadd_item %s 30004 30\nadd_item %s 30005 30\nadd_item %s 30006 30\nadd_item %s 30007 30\nadd_item %s 30008 30\nadd_item %s 30009 30\nadd_item %s 4 10\nadd_item %s 30010 50\nadd_item %s 30100 50\nadd_item %s 30111 50\nadd_item %s 3002 100\nadd_item %s 101 50\nadd_item %s 999 999\nadd_item %s 1050 100\nadd_item %s 1051 100\nadd_hero %s 20120\nadd_hero %s 20210\nadd_hero %s 20620\nadd_hero %s 20410\nadd_item %s 104000 100\nadd_item %s 104001 100\nadd_item %s 104002 100\nadd_item %s 104003 100\nadd_item %s 104004 100\nadd_item %s 105001 100\nadd_item %s 105002 100\nadd_item %s 105003 100\nadd_item %s 106001 100\nadd_item %s 106002 100\nadd_item %s 106003 100\nadd_core_fashion %s 145001 1\nadd_core_fashion %s 145002 1\nadd_core_fashion %s 145003 1\nadd_core_fashion %s 145004 1\nadd_core_fashion %s 145005 1\nadd_core_fashion %s 145006 1\nadd_core_fashion %s 146001 1\nadd_core_fashion %s 146002 1\nadd_core_fashion %s 146003 1"
     },
     {
       "name": "石头礼包",
@@ -801,6 +801,10 @@
     {
       "name": "随机神话时装宝箱",
       "text": "add_item %s 30205 1"
+    },
+    {
+      "name": "角色枪械幻形皮肤全解锁",
+      "text": "add_item %s 145001 1\nadd_item %s 145002 1\nadd_item %s 145003 1\nadd_item %s 145004 1\nadd_item %s 145005 1\nadd_item %s 145006 1\nadd_item %s 146001 1\nadd_item %s 146002 1\nadd_item %s 146003 1"
     }
   ],
   "枪械": [
@@ -1074,115 +1078,129 @@
     },
     {
       "name": "30001 提升等级",
-      "text": "finish_quest %s 90030000008763881 3 30001"
+      "text": "finish_quest %s 3 30001"
     },
     {
       "name": "30002 镶嵌宝石",
-      "text": "finish_quest %s 90030000008763881 3 30002"
+      "text": "finish_quest %s 3 30002"
     },
     {
       "name": "30003 强化装备",
-      "text": "finish_quest %s 90030000008763881 3 30003"
+      "text": "finish_quest %s 3 30003"
     },
     {
       "name": "30004 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30004"
+      "text": "finish_quest %s 3 30004"
     },
     {
       "name": "30005 升级天赋",
-      "text": "finish_quest %s 90030000008763881 3 30005"
+      "text": "finish_quest %s 3 30005"
     },
     {
       "name": "30006 升级技能",
-      "text": "finish_quest %s 90030000008763881 3 30006"
+      "text": "finish_quest %s 3 30006"
     },
     {
       "name": "30007 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30007"
+      "text": "finish_quest %s 3 30007"
     },
     {
       "name": "30008 镶嵌宝石",
-      "text": "finish_quest %s 90030000008763881 3 30008"
+      "text": "finish_quest %s 3 30008"
     },
     {
       "name": "30009 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30009"
+      "text": "finish_quest %s 3 30009"
     },
     {
       "name": "30010 升级技能",
-      "text": "finish_quest %s 90030000008763881 3 30010"
+      "text": "finish_quest %s 3 30010"
     },
     {
       "name": "30011 升级天赋",
-      "text": "finish_quest %s 90030000008763881 3 30011"
+      "text": "finish_quest %s 3 30011"
     },
     {
       "name": "30012 通关精英",
-      "text": "finish_quest %s 90030000008763881 3 30012"
+      "text": "finish_quest %s 3 30012"
     },
     {
       "name": "30013 镶嵌宝石",
-      "text": "finish_quest %s 90030000008763881 3 30013"
+      "text": "finish_quest %s 3 30013"
     },
     {
       "name": "30014 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30014"
+      "text": "finish_quest %s 3 30014"
     },
     {
       "name": "30015 提升等级",
-      "text": "finish_quest %s 90030000008763881 3 30015"
+      "text": "finish_quest %s 3 30015"
     },
     {
       "name": "30016 登录游戏",
-      "text": "finish_quest %s 90030000008763881 3 30016"
+      "text": "finish_quest %s 3 30016"
     },
     {
       "name": "30017 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30017"
+      "text": "finish_quest %s 3 30017"
     },
     {
       "name": "30018 光合作用",
-      "text": "finish_quest %s 90030000008763881 3 30018"
+      "text": "finish_quest %s 3 30018"
     },
     {
       "name": "30019 镶嵌宝石",
-      "text": "finish_quest %s 90030000008763881 3 30019"
+      "text": "finish_quest %s 3 30019"
     },
     {
       "name": "30020 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30020"
+      "text": "finish_quest %s 3 30020"
     },
     {
       "name": "30021 提升等级",
-      "text": "finish_quest %s 90030000008763881 3 30021"
+      "text": "finish_quest %s 3 30021"
     },
     {
       "name": "30022 登录游戏",
-      "text": "finish_quest %s 90030000008763881 3 30022"
+      "text": "finish_quest %s 3 30022"
     },
     {
       "name": "30023 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30023"
+      "text": "finish_quest %s 3 30023"
     },
     {
       "name": "30024 镶嵌宝石",
-      "text": "finish_quest %s 90030000008763881 3 30024"
+      "text": "finish_quest %s 3 30024"
     },
     {
       "name": "30025 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30025"
+      "text": "finish_quest %s 3 30025"
     },
     {
       "name": "30026 镶嵌宝石",
-      "text": "finish_quest %s 90030000008763881 3 30026"
+      "text": "finish_quest %s 3 30026"
     },
     {
       "name": "30027 升级天赋",
-      "text": "finish_quest %s 90030000008763881 3 30027"
+      "text": "finish_quest %s 3 30027"
     },
     {
       "name": "30028 通关关卡",
-      "text": "finish_quest %s 90030000008763881 3 30028"
+      "text": "finish_quest %s 3 30028"
+    }
+  ],
+  "服务器": [
+    {
+      "name": "添加服务器时间偏移天数",
+      "text": "add_server_day 1"
+    },
+    {
+      "name": "添加服务器时间偏移小时",
+      "text": "add_server_hour 1"
+    },
+    {
+      "name": "添加服务器时间偏移分钟",
+      "text": "add_server_min 1"
     }
   ]
 }

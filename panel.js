@@ -305,6 +305,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 带重试的后端同步（最多 3 次，间隔 1 秒）
   async function syncPersonalDataToBackend(owner, categories, commands, retries = 3) {
     if (!isInWhitelist) return;
+    // 守卫条件：commands 为空时不写入后端，避免覆盖已有数据
+    if (!commands || !commands.length) return;
     for (let attempt = 1; attempt <= retries; attempt++) {
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
