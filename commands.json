@@ -615,100 +615,16 @@
   ],
   "道具": [
     {
-      "name": "全部道具",
-      "text": "add_weapon %s 135000 1\nadd_weapon %s 135001 1\nadd_weapon %s 135002 1\nadd_weapon %s 135003 1\nadd_weapon %s 135004 1\nadd_weapon %s 135005 1\nadd_weapon %s 135006 1\nadd_weapon %s 136001 1\nadd_weapon %s 136002 1\nadd_weapon %s 136003 1\nadd_item %s 2010 10\nadd_item %s 2020 10\nadd_item %s 2030 10\nadd_item %s 2040 10\nadd_item %s 2050 10\nadd_item %s 2060 10\nadd_item %s 2070 10\nadd_item %s 2080 10\nadd_item %s 2090 10\nadd_item %s 2100 10\nadd_item %s 2110 10\nadd_item %s 2120 10\nadd_item %s 30004 30\nadd_item %s 30005 30\nadd_item %s 30006 30\nadd_item %s 30007 30\nadd_item %s 30008 30\nadd_item %s 30009 30\nadd_item %s 4 10\nadd_item %s 30010 50\nadd_item %s 30100 50\nadd_item %s 30111 50\nadd_item %s 3002 100\nadd_item %s 101 50\nadd_item %s 999 999\nadd_item %s 1050 100\nadd_item %s 1051 100\nadd_hero %s 20120\nadd_hero %s 20210\nadd_hero %s 20620\nadd_hero %s 20410\nadd_item %s 104000 100\nadd_item %s 104001 100\nadd_item %s 104002 100\nadd_item %s 104003 100\nadd_item %s 104004 100\nadd_item %s 105001 100\nadd_item %s 105002 100\nadd_item %s 105003 100\nadd_item %s 106001 100\nadd_item %s 106002 100\nadd_item %s 106003 100\nadd_core_fashion %s 145001 1\nadd_core_fashion %s 145002 1\nadd_core_fashion %s 145003 1\nadd_core_fashion %s 145004 1\nadd_core_fashion %s 145005 1\nadd_core_fashion %s 145006 1\nadd_core_fashion %s 146001 1\nadd_core_fashion %s 146002 1\nadd_core_fashion %s 146003 1"
-    },
-    {
-      "name": "石头礼包",
-      "text": "add_item %s 30001 10\nadd_item %s 30003 1\nadd_item %s 30004 1\nadd_item %s 30005 1\nadd_item %s 30006 1\nadd_item %s 30007 1\nadd_item %s 30008 1\nadd_item %s 30009 1"
-    },
-    {
-      "name": "钻石+99999",
-      "text": "add_item %s 90001 99999"
-    },
-    {
-      "name": "金币+999999",
-      "text": "add_item %s 999 999999"
-    },
-    {
-      "name": "石油+999",
-      "text": "add_item %s 90003 999"
-    },
-    {
-      "name": "石油+999",
-      "text": "add_item %s 90004 999"
-    },
-    {
-      "name": "食物+99999",
-      "text": "add_item %s 90005 99999"
-    },
-    {
-      "name": "木材+9999",
-      "text": "add_item %s 90006 9999"
-    },
-    {
-      "name": "石头+9999",
-      "text": "add_item %s 90007 9999"
-    },
-    {
-      "name": "建筑工人+9999",
-      "text": "add_item %s 90008 9999"
-    },
-    {
-      "name": "地雷阵+9999",
-      "text": "add_item %s 90009 9999"
-    },
-    {
-      "name": "rogue币+9999",
-      "text": "add_item %s 90010 9999"
-    },
-    {
-      "name": "经验药水+99",
-      "text": "add_item %s 90011 99"
-    },
-    {
-      "name": "植物药水+99",
-      "text": "add_item %s 90012 99"
-    },
-    {
-      "name": "联盟药水+99",
-      "text": "add_item %s 90013 99"
-    },
-    {
-      "name": "复活币+99",
-      "text": "add_item %s 90014 99"
-    },
-    {
-      "name": "神话复活币+99",
-      "text": "add_item %s 90015 99"
-    },
-    {
-      "name": "全资源+999",
-      "text": "add_item %s 1 999\nadd_item %s 2 999\nadd_item %s 3 999\nadd_item %s 4 999\nadd_item %s 5 999"
-    },
-    {
-      "name": "全资源+9999",
-      "text": "add_item %s 1 9999\nadd_item %s 2 9999\nadd_item %s 3 9999\nadd_item %s 4 9999\nadd_item %s 5 9999"
-    },
-    {
-      "name": "清空背包",
-      "text": "clear_bag %s"
-    },
-    {
       "name": "增加体力",
       "text": "add_item %s 4 100"
     },
     {
-      "name": "添加资源",
-      "text": "add_item %s 4 100\nadd_item %s 1 1000\nadd_item %s 99 100000\nadd_item %s 100 10000\nadd_item %s 101 10000\nadd_item %s 999 1000000"
+      "name": "增加金币",
+      "text": "add_item %s 999 999999"
     },
     {
       "name": "增加经验",
-      "text": "add_item %s 1 10000"
-    },
-    {
-      "name": "添加月之湍流",
-      "text": "add_item %s 2 10000"
+      "text": "add_exp %s 99999"
     },
     {
       "name": "添加指定道具",
@@ -957,10 +873,6 @@
     {
       "name": "删除材料",
       "text": "clear_item %s"
-    },
-    {
-      "name": "增加经验",
-      "text": "add_item %s 1 10"
     },
     {
       "name": "至尊星辰源点宝箱",

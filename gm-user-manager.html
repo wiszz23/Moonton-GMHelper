@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>用户数据管理工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* 顶部工具栏 */
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .header-actions button,
+    .header-actions select {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .header-actions button:hover {
+      background: #f5f5f5;
+    }
+
+    .status {
+      font-size: 12px;
+      color: #999;
+      margin-left: 12px;
+    }
+
+    .status.connected::before {
+      content: "● ";
+      color: #4caf50;
+    }
+
+    .status.disconnected::before {
+      content: "● ";
+      color: #d32f2f;
+    }
+
+    /* 搜索栏 */
+    .search-bar {
+      background: #fff;
+      padding: 12px 16px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-bar input {
+      flex: 1;
+      max-width: 400px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .search-bar button {
+      padding: 8px 16px;
+      background: #42a5f5;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .search-bar button:hover {
+      background: #1976d2;
+    }
+
+    /* 主内容区 */
+    .content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* 左侧：用户列表 */
+    .left-panel {
+      width: 35%;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+
+    .users-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .users-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .users-table thead {
+      position: sticky;
+      top: 0;
+      background: #f9f9f9;
+      border-bottom: 2px solid #ddd;
+    }
+
+    .users-table th {
+      padding: 10px;
+      text-align: left;
+      font-weight: 600;
+      color: #666;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .users-table td {
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .users-table tbody tr {
+      cursor: pointer;
+      transition: background-color 200ms;
+    }
+
+    .users-table tbody tr:hover {
+      background: #f5f5f5;
+    }
+
+    .users-table tbody tr.selected {
+      background: #e3f2fd;
+    }
+
+    /* 分页 */
+    .pagination {
+      padding: 12px 16px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      background: #fff;
+    }
+
+    .pagination button {
+      padding: 4px 8px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .pagination button:hover:not(:disabled) {
+      background: #f5f5f5;
+    }
+
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination .page-info {
+      padding: 4px 8px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* 右侧：编辑区 */
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    .tab {
+      padding: 12px 20px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      transition: all 200ms;
+    }
+
+    .tab:hover {
+      background: #f5f5f5;
+    }
+
+    .tab.active {
+      color: #42a5f5;
+      border-bottom-color: #42a5f5;
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow: hidden;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 编辑器区域 */
+    .editor-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .editor-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      gap: 8px;
+      background: #fafafa;
+    }
+
+    .editor-header button {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .editor-header button:hover {
+      background: #f5f5f5;
+    }
+
+    .editor-header button.primary {
+      background: #4caf50;
+      color: #fff;
+      border-color: #4caf50;
+    }
+
+    .editor-header button.primary:hover {
+      background: #388e3c;
+    }
+
+    .json-editor {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      border: none;
+      padding: 12px;
+      font-family: "Monaco", "Courier New", monospace;
+      font-size: 12px;
+      resize: none;
+      line-height: 1.5;
+      background: #fafafa;
+    }
+
+    textarea:focus {
+      outline: none;
+      background: #fff;
+    }
+
+    /* 预览区 */
+    .preview-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .json-preview {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: "Monaco", "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    /* 弹窗 */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow: auto;
+    }
+
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .modal-body {
+      padding: 16px;
+    }
+
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    /* Toast 通知 */
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 2000;
+    }
+
+    .toast {
+      background: #323232;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      animation: slideIn 300ms ease-out;
+    }
+
+    .toast.success {
+      background: #4caf50;
+    }
+
+    .toast.error {
+      background: #d32f2f;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* 加载状态 */
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #42a5f5;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* 配置弹窗 */
+    .config-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 顶部工具栏 -->
+    <div class="header">
+      <h1>用户数据管理工具</h1>
+      <div class="header-actions">
+        <button onclick="testConnection()" title="测试连接">🔌 连接</button>
+        <button onclick="openSettings()" title="设置">⚙️ 设置</button>
+        <span class="status disconnected" id="connectionStatus">未连接</span>
+      </div>
+    </div>
+
+    <!-- 搜索栏 -->
+    <div class="search-bar">
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="输入 UID / 角色ID / 用户名搜索..."
+        onkeypress="if(event.key==='Enter') queryUsers()"
+      >
+      <button onclick="queryUsers()">查询</button>
+      <button onclick="exportUserJSON()" title="导出">📥 导出 JSON</button>
+      <button onclick="importUserJSON()" title="导入">📤 导入 JSON</button>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="content">
+      <!-- 左侧：用户列表 -->
+      <div class="left-panel">
+        <div class="users-list" id="usersList">
+          <div class="empty-state">
+            <p>搜索用户或点击查询按钮开始</p>
+          </div>
+        </div>
+        <div class="pagination" id="pagination">
+          <button onclick="previousPage()" id="prevBtn">◀ 上一页</button>
+          <span class="page-info" id="pageInfo">0 / 0</span>
+          <button onclick="nextPage()" id="nextBtn">下一页 ▶</button>
+        </div>
+      </div>
+
+      <!-- 右侧：编辑区 -->
+      <div class="right-panel">
+        <!-- Tab 按钮 -->
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('edit')">编辑用户 JSON</button>
+          <button class="tab" onclick="switchTab('public')">查看 Public 指令</button>
+        </div>
+
+        <!-- Tab 1: 编辑用户 JSON -->
+        <div id="edit" class="tab-content active">
+          <div class="editor-header">
+            <button onclick="formatJSON()">📐 格式化</button>
+            <button onclick="validateJSON()" title="验证 JSON">✓ 验证</button>
+            <button class="primary" onclick="saveUserLocal()" title="保存到本地">💾 保存</button>
+            <button class="primary" onclick="pushUserDB()" title="推送到数据库" style="background: #1976d2; border-color: #1976d2;">🚀 推送到 DB</button>
+          </div>
+          <div class="json-editor">
+            <textarea id="jsonEditor" placeholder="选择用户后，JSON 内容将显示在这里..."></textarea>
+          </div>
+        </div>
+
+        <!-- Tab 2: 查看 Public 指令 -->
+        <div id="public" class="tab-content">
+          <div class="editor-header">
+            <button onclick="loadPublicCommands()">🔄 刷新</button>
+          </div>
+          <div class="preview-container">
+            <div id="publicPreview" class="json-preview">点击"刷新"加载 public 指令...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>连接设置</h2>
+        <button class="modal-close" onclick="closeSettings()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="config-form">
+          <div class="form-group">
+            <label>API 地址</label>
+            <input type="text" id="apiUrl" placeholder="http://10.30.138.5:3000">
+          </div>
+          <div class="form-group">
+            <label>请求超时 (毫秒)</label>
+            <input type="number" id="requestTimeout" value="10000" min="1000" max="60000">
+          </div>
+          <div class="form-group">
+            <label>缓存时间 (小时)</label>
+            <input type="number" id="cacheExpiry" value="1" min="0" max="24">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="resetSettings()">重置默认</button>
+        <button onclick="closeSettings()">取消</button>
+        <button class="primary" onclick="saveSettings()" style="background: #4caf50; border-color: #4caf50;">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 容器 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- 隐藏的文件输入 -->
+  <input type="file" id="fileInput" style="display: none;" accept=".json,.txt">
+
+  <script>
+    // ============ 全局配置 ============
+    const DEFAULT_CONFIG = {
+      API_BASE_URL: 'http://10.30.138.5:3000',
+      REQUEST_TIMEOUT: 10000,
+      CACHE_EXPIRY: 3600000
+    };
+
+    let CONFIG = { ...DEFAULT_CONFIG };
+    let currentUser = null;
+    let currentPage = 1;
+    let pageSize = 50;
+    let totalUsers = 0;
+    let users = [];
+    let originalJSON = null;
+
+    // ============ 初始化 ============
+    window.addEventListener('DOMContentLoaded', () => {
+      loadConfig();
+      updateConnectionStatus();
+    });
+
+    // ============ 配置管理 ============
+    function loadConfig() {
+      const saved = localStorage.getItem('gm_config');
+      if (saved) {
+        try {
+          CONFIG = JSON.parse(saved);
+        } catch (e) {
+          CONFIG = { ...DEFAULT_CONFIG };
+        }
+      }
+    }
+
+    function saveConfig() {
+      localStorage.setItem('gm_config', JSON.stringify(CONFIG));
+    }
+
+    function openSettings() {
+      document.getElementById('apiUrl').value = CONFIG.API_BASE_URL;
+      document.getElementById('requestTimeout').value = CONFIG.REQUEST_TIMEOUT;
+      document.getElementById('cacheExpiry').value = CONFIG.CACHE_EXPIRY / 3600000;
+      document.getElementById('settingsModal').classList.add('active');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('active');
+    }
+
+    function saveSettings() {
+      CONFIG.API_BASE_URL = document.getElementById('apiUrl').value || DEFAULT_CONFIG.API_BASE_URL;
+      CONFIG.REQUEST_TIMEOUT = parseInt(document.getElementById('requestTimeout').value) || DEFAULT_CONFIG.REQUEST_TIMEOUT;
+      CONFIG.CACHE_EXPIRY = parseInt(document.getElementById('cacheExpiry').value) * 3600000 || DEFAULT_CONFIG.CACHE_EXPIRY;
+      saveConfig();
+      closeSettings();
+      showToast('设置已保存', 'success');
+      testConnection();
+    }
+
+    function resetSettings() {
+      CONFIG = { ...DEFAULT_CONFIG };
+      saveConfig();
+      document.getElementById('apiUrl').value = CONFIG.API_BASE_URL;
+      document.getElementById('requestTimeout').value = CONFIG.REQUEST_TIMEOUT;
+      document.getElementById('cacheExpiry').value = CONFIG.CACHE_EXPIRY / 3600000;
+      showToast('已恢复默认设置', 'success');
+    }
+
+    // ============ API 请求 ============
+    async function fetchAPI(endpoint, options = {}) {
+      const url = CONFIG.API_BASE_URL + endpoint;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        updateConnectionStatus(true);
+        return data;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        updateConnectionStatus(false);
+        throw error;
+      }
+    }
+
+    function updateConnectionStatus(connected = null) {
+      if (connected !== null) {
+        const status = document.getElementById('connectionStatus');
+        if (connected) {
+          status.textContent = '✓ 已连接';
+          status.className = 'status connected';
+        } else {
+          status.textContent = '✗ 连接失败';
+          status.className = 'status disconnected';
+        }
+      }
+    }
+
+    async function testConnection() {
+      try {
+        const result = await fetchAPI('/api/health');
+        if (result.code === 0) {
+          showToast('连接成功', 'success');
+        } else {
+          showToast('连接失败：' + result.message, 'error');
+        }
+      } catch (error) {
+        showToast('连接失败：' + error.message, 'error');
+      }
+    }
+
+    // ============ 查询用户 ============
+    async function queryUsers() {
+      const search = document.getElementById('searchInput').value;
+      if (!search.trim()) {
+        showToast('请输入搜索条件', 'error');
+        return;
+      }
+
+      try {
+        currentPage = 1;
+        const result = await fetchAPI(`/api/gm/users?search=${encodeURIComponent(search)}&page=${currentPage}&limit=${pageSize}`);
+
+        if (result.code !== 0) {
+          showToast('查询失败：' + result.message, 'error');
+          return;
+        }
+
+        users = result.data.users || [];
+        totalUsers = result.data.total || 0;
+        renderUsersList();
+        updatePagination();
+        showToast(`找到 ${totalUsers} 个用户`, 'success');
+      } catch (error) {
+        showToast('查询失败：' + error.message, 'error');
+      }
+    }
+
+    function renderUsersList() {
+      const listContainer = document.getElementById('usersList');
+
+      if (users.length === 0) {
+        listContainer.innerHTML = '<div class="empty-state"><p>没有找到用户</p></div>';
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.className = 'users-table';
+
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>UID</th>
+            <th>用户名</th>
+            <th>角色ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${users.map((user, index) => `
+            <tr onclick="selectUser(${index})" ${currentUser === users[index] ? 'class="selected"' : ''}>
+              <td>${user.uid || '-'}</td>
+              <td>${user.username || '-'}</td>
+              <td>${user.character_id || '-'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+
+      listContainer.innerHTML = '';
+      listContainer.appendChild(table);
+    }
+
+    function selectUser(index) {
+      currentUser = users[index];
+      originalJSON = JSON.stringify(currentUser, null, 2);
+      document.getElementById('jsonEditor').value = originalJSON;
+      renderUsersList();
+    }
+
+    function updatePagination() {
+      const totalPages = Math.ceil(totalUsers / pageSize);
+      document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+      document.getElementById('prevBtn').disabled = currentPage === 1;
+      document.getElementById('nextBtn').disabled = currentPage === totalPages || totalPages === 0;
+    }
+
+    function previousPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        queryUsers();
+      }
+    }
+
+    function nextPage() {
+      const totalPages = Math.ceil(totalUsers / pageSize);
+      if (currentPage < totalPages) {
+        currentPage++;
+        queryUsers();
+      }
+    }
+
+    // ============ JSON 编辑 ============
+    function formatJSON() {
+      try {
+        const text = document.getElementById('jsonEditor').value;
+        const obj = JSON.parse(text);
+        const formatted = JSON.stringify(obj, null, 2);
+        document.getElementById('jsonEditor').value = formatted;
+        showToast('JSON 已格式化', 'success');
+      } catch (error) {
+        showToast('JSON 格式错误：' + error.message, 'error');
+      }
+    }
+
+    function validateJSON() {
+      try {
+        const text = document.getElementById('jsonEditor').value;
+        JSON.parse(text);
+        showToast('JSON 格式有效', 'success');
+      } catch (error) {
+        showToast('JSON 格式错误：' + error.message, 'error');
+      }
+    }
+
+    function saveUserLocal() {
+      try {
+        const text = document.getElementById('jsonEditor').value;
+        const obj = JSON.parse(text);
+        localStorage.setItem(`gm_user_draft_${obj.uid}`, JSON.stringify(obj));
+        showToast('已保存到本地', 'success');
+      } catch (error) {
+        showToast('保存失败：' + error.message, 'error');
+      }
+    }
+
+    async function pushUserDB() {
+      if (!currentUser) {
+        showToast('请先选择一个用户', 'error');
+        return;
+      }
+
+      try {
+        const text = document.getElementById('jsonEditor').value;
+        const obj = JSON.parse(text);
+
+        const result = await fetchAPI('/api/gm/users', {
+          method: 'POST',
+          body: JSON.stringify(obj)
+        });
+
+        if (result.code !== 0) {
+          showToast('推送失败：' + result.message, 'error');
+          return;
+        }
+
+        currentUser = obj;
+        originalJSON = JSON.stringify(obj, null, 2);
+        showToast('已成功推送到数据库', 'success');
+      } catch (error) {
+        showToast('推送失败：' + error.message, 'error');
+      }
+    }
+
+    // ============ 导入导出 ============
+    function exportUserJSON() {
+      if (!currentUser) {
+        showToast('请先选择一个用户', 'error');
+        return;
+      }
+
+      const dataStr = JSON.stringify(currentUser, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `user_${currentUser.uid}_${new Date().getTime()}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast('已导出用户数据', 'success');
+    }
+
+    function importUserJSON() {
+      document.getElementById('fileInput').click();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target.result;
+          const obj = JSON.parse(content);
+          document.getElementById('jsonEditor').value = JSON.stringify(obj, null, 2);
+          currentUser = obj;
+          originalJSON = JSON.stringify(obj, null, 2);
+          showToast('已导入用户数据', 'success');
+        } catch (error) {
+          showToast('导入失败：' + error.message, 'error');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // ============ Public 指令 ============
+    async function loadPublicCommands() {
+      try {
+        const result = await fetchAPI('/api/commands/public');
+
+        if (result.code !== 0) {
+          showToast('加载失败：' + result.message, 'error');
+          return;
+        }
+
+        const preview = document.getElementById('publicPreview');
+        preview.textContent = JSON.stringify(result.data, null, 2);
+        showToast('已加载 public 指令', 'success');
+      } catch (error) {
+        showToast('加载失败：' + error.message, 'error');
+      }
+    }
+
+    // ============ Tab 切换 ============
+    function switchTab(tabName) {
+      // 移除所有 active 类
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+
+      // 添加 active 类到选中的 tab
+      event.target.classList.add('active');
+      document.getElementById(tabName).classList.add('active');
+    }
+
+    // ============ Toast 通知 ============
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 300ms ease-out forwards';
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 2500);
+    }
+
+    // 快捷键
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey || event.metaKey) {
+        if (event.key === 's') {
+          event.preventDefault();
+          saveUserLocal();
+        } else if (event.key === 'z' && !event.shiftKey) {
+          event.preventDefault();
+          // 撤销功能可选实现
+        } else if (event.key === 'e') {
+          event.preventDefault();
+          exportUserJSON();
+        } else if (event.key === 'i') {
+          event.preventDefault();
+          importUserJSON();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

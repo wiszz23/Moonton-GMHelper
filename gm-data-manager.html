@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GM 数据管理工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .header-actions button {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .header-actions button:hover {
+      background: #f5f5f5;
+    }
+
+    .status {
+      font-size: 12px;
+      color: #999;
+      margin-left: 12px;
+    }
+
+    .status.connected::before {
+      content: "● ";
+      color: #4caf50;
+    }
+
+    .status.disconnected::before {
+      content: "● ";
+      color: #d32f2f;
+    }
+
+    .query-bar {
+      background: #fff;
+      padding: 12px 16px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .query-bar input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      flex: 1;
+      max-width: 300px;
+    }
+
+    .query-bar button {
+      padding: 8px 16px;
+      background: #42a5f5;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .query-bar button:hover {
+      background: #1976d2;
+    }
+
+    .content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .editor-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+
+    .editor-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      gap: 8px;
+      background: #fafafa;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .editor-header span {
+      font-size: 12px;
+      color: #666;
+      font-weight: 600;
+    }
+
+    .editor-header button {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .editor-header button:hover {
+      background: #f5f5f5;
+    }
+
+    .editor-header button.primary {
+      background: #4caf50;
+      color: #fff;
+      border-color: #4caf50;
+    }
+
+    .editor-header button.primary:hover {
+      background: #388e3c;
+    }
+
+    .editor-header button.danger {
+      background: #d32f2f;
+      color: #fff;
+      border-color: #d32f2f;
+    }
+
+    .editor-header button.danger:hover {
+      background: #c62828;
+    }
+
+    .json-editor {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      border: none;
+      padding: 12px;
+      font-family: "Monaco", "Courier New", monospace;
+      font-size: 12px;
+      resize: none;
+      line-height: 1.5;
+      background: #fafafa;
+    }
+
+    textarea:focus {
+      outline: none;
+      background: #fff;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      max-width: 500px;
+      width: 90%;
+    }
+
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .modal-body {
+      padding: 16px;
+    }
+
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .modal-footer button {
+      padding: 8px 16px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .modal-footer button.primary {
+      background: #4caf50;
+      color: #fff;
+      border-color: #4caf50;
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 2000;
+    }
+
+    .toast {
+      background: #323232;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      animation: slideIn 300ms ease-out;
+    }
+
+    .toast.success {
+      background: #4caf50;
+    }
+
+    .toast.error {
+      background: #d32f2f;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #42a5f5;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 顶部工具栏 -->
+    <div class="header">
+      <h1>GM 数据管理工具</h1>
+      <div class="header-actions">
+        <button onclick="openSettings()" title="设置">⚙️ 设置</button>
+        <span class="status disconnected" id="connectionStatus">未连接</span>
+      </div>
+    </div>
+
+    <!-- 查询栏 -->
+    <div class="query-bar">
+      <input
+        type="text"
+        id="ownerInput"
+        placeholder="输入 owner 名称 (如: public, role_list, user_123 等)"
+        onkeypress="if(event.key==='Enter') queryData()"
+      >
+      <button onclick="queryData()">🔍 查询</button>
+      <button onclick="exportJSON()" style="background: #ff9800;">📥 导出</button>
+      <button onclick="importJSON()" style="background: #9c27b0;">📤 导入</button>
+    </div>
+
+    <!-- 编辑区 -->
+    <div class="content">
+      <div class="editor-panel">
+        <div class="editor-header">
+          <span id="ownerLabel">未选择</span>
+          <div style="flex: 1;"></div>
+          <button onclick="formatJSON()">📐 格式化</button>
+          <button onclick="validateJSON()">✓ 验证</button>
+          <button class="primary" onclick="saveData()">💾 保存到 DB</button>
+          <button class="danger" onclick="deleteData()" id="deleteBtn" disabled>🗑️ 删除</button>
+        </div>
+        <div class="json-editor">
+          <textarea id="jsonEditor" placeholder="输入或粘贴 JSON 数据"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>连接设置</h2>
+        <button class="modal-close" onclick="closeSettings()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>API 地址</label>
+          <input type="text" id="apiUrl" placeholder="http://10.30.138.5:3000">
+        </div>
+        <div class="form-group">
+          <label>请求超时 (毫秒)</label>
+          <input type="number" id="requestTimeout" value="10000" min="1000" max="60000">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="resetSettings()">重置默认</button>
+        <button onclick="closeSettings()">取消</button>
+        <button class="primary" onclick="saveSettings()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 容器 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- 隐藏的文件输入 -->
+  <input type="file" id="fileInput" style="display: none;" accept=".json,.txt">
+
+  <script>
+    // ============ 全局配置 ============
+    const DEFAULT_CONFIG = {
+      API_BASE_URL: 'http://10.30.138.5:3000',
+      REQUEST_TIMEOUT: 10000
+    };
+
+    let CONFIG = { ...DEFAULT_CONFIG };
+    let currentOwner = null;
+    let currentData = null;
+
+    // ============ 初始化 ============
+    window.addEventListener('DOMContentLoaded', () => {
+      loadConfig();
+      testConnection();
+    });
+
+    // ============ 配置管理 ============
+    function loadConfig() {
+      const saved = localStorage.getItem('gm_config');
+      if (saved) {
+        try {
+          CONFIG = JSON.parse(saved);
+        } catch (e) {
+          CONFIG = { ...DEFAULT_CONFIG };
+        }
+      }
+    }
+
+    function saveConfig() {
+      localStorage.setItem('gm_config', JSON.stringify(CONFIG));
+    }
+
+    function openSettings() {
+      document.getElementById('apiUrl').value = CONFIG.API_BASE_URL;
+      document.getElementById('requestTimeout').value = CONFIG.REQUEST_TIMEOUT;
+      document.getElementById('settingsModal').classList.add('active');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('active');
+    }
+
+    function saveSettings() {
+      CONFIG.API_BASE_URL = document.getElementById('apiUrl').value || DEFAULT_CONFIG.API_BASE_URL;
+      CONFIG.REQUEST_TIMEOUT = parseInt(document.getElementById('requestTimeout').value) || DEFAULT_CONFIG.REQUEST_TIMEOUT;
+      saveConfig();
+      closeSettings();
+      showToast('设置已保存', 'success');
+      testConnection();
+    }
+
+    function resetSettings() {
+      CONFIG = { ...DEFAULT_CONFIG };
+      saveConfig();
+      document.getElementById('apiUrl').value = CONFIG.API_BASE_URL;
+      document.getElementById('requestTimeout').value = CONFIG.REQUEST_TIMEOUT;
+      showToast('已恢复默认设置', 'success');
+    }
+
+    // ============ API 请求 ============
+    async function fetchAPI(endpoint, options = {}) {
+      const url = CONFIG.API_BASE_URL + endpoint;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        updateConnectionStatus(true);
+        return data;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        updateConnectionStatus(false);
+        throw error;
+      }
+    }
+
+    function updateConnectionStatus(connected = null) {
+      if (connected !== null) {
+        const status = document.getElementById('connectionStatus');
+        if (connected) {
+          status.textContent = '✓ 已连接';
+          status.className = 'status connected';
+        } else {
+          status.textContent = '✗ 连接失败';
+          status.className = 'status disconnected';
+        }
+      }
+    }
+
+    async function testConnection() {
+      try {
+        await fetchAPI('/api/health');
+        showToast('连接成功', 'success');
+      } catch (error) {
+        showToast('连接失败：' + error.message, 'error');
+      }
+    }
+
+    // ============ 查询数据 ============
+    async function queryData() {
+      const owner = document.getElementById('ownerInput').value.trim();
+      if (!owner) {
+        showToast('请输入 owner 名称', 'error');
+        return;
+      }
+
+      try {
+        const result = await fetchAPI(`/api/commands/${encodeURIComponent(owner)}`);
+        currentOwner = owner;
+        currentData = result;
+
+        let jsonData = null;
+        if (result.commands) {
+          try {
+            jsonData = JSON.parse(result.commands);
+          } catch (e) {
+            jsonData = result.commands;
+          }
+        }
+
+        if (jsonData) {
+          document.getElementById('jsonEditor').value = JSON.stringify(jsonData, null, 2);
+        } else {
+          document.getElementById('jsonEditor').value = '{}';
+        }
+
+        document.getElementById('ownerLabel').textContent = `Owner: ${owner}`;
+        document.getElementById('deleteBtn').disabled = false;
+        showToast(`已加载: ${owner}`, 'success');
+      } catch (error) {
+        showToast('查询失败：' + error.message, 'error');
+      }
+    }
+
+    // ============ 保存数据 ============
+    async function saveData() {
+      if (!currentOwner) {
+        showToast('请先查询一条数据', 'error');
+        return;
+      }
+
+      try {
+        const text = document.getElementById('jsonEditor').value;
+        const jsonData = JSON.parse(text);
+
+        await fetchAPI('/api/commands', {
+          method: 'POST',
+          body: JSON.stringify({
+            owner: currentOwner,
+            commands: JSON.stringify(jsonData)
+          })
+        });
+
+        showToast('数据已保存到数据库', 'success');
+      } catch (error) {
+        showToast('保存失败：' + error.message, 'error');
+      }
+    }
+
+    // ============ 删除数据 ============
+    async function deleteData() {
+      if (!currentOwner) {
+        showToast('请先查询一条数据', 'error');
+        return;
+      }
+
+      if (!confirm(`确定要删除 "${currentOwner}" 的所有数据吗？`)) {
+        return;
+      }
+
+      try {
+        await fetchAPI(`/api/commands/${encodeURIComponent(currentOwner)}`, {
+          method: 'DELETE'
+        });
+
+        currentOwner = null;
+        currentData = null;
+        document.getElementById('jsonEditor').value = '';
+        document.getElementById('ownerInput').value = '';
+        document.getElementById('ownerLabel').textContent = '未选择';
+        document.getElementById('deleteBtn').disabled = true;
+        showToast('数据已删除', 'success');
+      } catch (error) {
+        showToast('删除失败：' + error.message, 'error');
+      }
+    }
+
+    // ============ JSON 编辑 ============
+    function formatJSON() {
+      try {
+        const text = document.getElementById('jsonEditor').value;
+        const obj = JSON.parse(text);
+        const formatted = JSON.stringify(obj, null, 2);
+        document.getElementById('jsonEditor').value = formatted;
+        showToast('JSON 已格式化', 'success');
+      } catch (error) {
+        showToast('JSON 格式错误：' + error.message, 'error');
+      }
+    }
+
+    function validateJSON() {
+      try {
+        const text = document.getElementById('jsonEditor').value;
+        JSON.parse(text);
+        showToast('JSON 格式有效', 'success');
+      } catch (error) {
+        showToast('JSON 格式错误：' + error.message, 'error');
+      }
+    }
+
+    // ============ 导入导出 ============
+    function exportJSON() {
+      if (!currentOwner) {
+        showToast('请先查询一条数据', 'error');
+        return;
+      }
+
+      try {
+        const text = document.getElementById('jsonEditor').value;
+        const obj = JSON.parse(text);
+        const dataStr = JSON.stringify(obj, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${currentOwner}_${new Date().getTime()}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        showToast('已导出数据', 'success');
+      } catch (error) {
+        showToast('导出失败：' + error.message, 'error');
+      }
+    }
+
+    function importJSON() {
+      document.getElementById('fileInput').click();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target.result;
+          const obj = JSON.parse(content);
+          document.getElementById('jsonEditor').value = JSON.stringify(obj, null, 2);
+          showToast('已导入数据', 'success');
+        } catch (error) {
+          showToast('导入失败：' + error.message, 'error');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // ============ Toast 通知 ============
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    // ============ 快捷键 ============
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey || event.metaKey) {
+        if (event.key === 's') {
+          event.preventDefault();
+          saveData();
+        } else if (event.key === 'e') {
+          event.preventDefault();
+          exportJSON();
+        } else if (event.key === 'i') {
+          event.preventDefault();
+          importJSON();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

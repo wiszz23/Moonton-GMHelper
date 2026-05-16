@@ -480,19 +480,19 @@
         }
         createPanel(hosts);
         setupStorageWatcher();
+
+        // 仅在白名单页面内启动用户名轮询
+        const startUserRead = () => { setTimeout(pollReadUser, 100); };
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          startUserRead();
+        } else {
+          window.addEventListener('DOMContentLoaded', () => { startUserRead(); });
+        }
       });
     };
 
     // 面板先创建，用户名轮询读取
     proceed();
-
-    // 页面就绪后开始轮询用户名读取
-    const startUserRead = () => { setTimeout(pollReadUser, 100); };
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      startUserRead();
-    } else {
-      window.addEventListener('DOMContentLoaded', () => { startUserRead(); });
-    }
   }
 
   // 监听 storage 变化，实时更新白名单（确保只注册一次）

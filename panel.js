@@ -303,10 +303,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // 带重试的后端同步（最多 3 次，间隔 1 秒）
+  // 同步个人数据到后端，返回 true=成功，false=失败
   async function syncPersonalDataToBackend(owner, categories, commands, retries = 3) {
-    if (!isInWhitelist) return;
+    if (!isInWhitelist) return false;
     // 守卫条件：commands 为空时不写入后端，避免覆盖已有数据
-    if (!commands || !commands.length) return;
+    if (!commands || !commands.length) return true;
     for (let attempt = 1; attempt <= retries; attempt++) {
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
@@ -318,7 +319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           signal: ctrl.signal
         });
         clearTimeout(tid);
-        if (resp.ok) return; // 成功
+        if (resp.ok) return true; // 成功
         console.warn(`[GM面板] 后端同步失败(尝试 ${attempt}/${retries}): HTTP ${resp.status}`);
       } catch (e) {
         clearTimeout(tid);
@@ -327,6 +328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (attempt < retries) await new Promise(r => setTimeout(r, 1000));
     }
     console.error('[GM面板] 后端同步已达最大重试次数，数据已保存在本地');
+    return false; // 失败
   }
 
   async function reloadPersonalCommands(waitForSync = false) {
@@ -1095,10 +1097,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       const json = data.commands ? JSON.parse(data.commands) : { categories: [], commands: [] };
+
+      // 合并排序数据：load 最新 order
+      await loadPersonalOrder();
+      await loadPersonalCategoriesOrder();
+
       const exportData = {
-        owner: currentUserName,
+        // 不再导出 owner，避免用户混淆（导入时数据归属当前登录用户）
         updated_at: data.updated_at || new Date().toISOString(),
-        ...json
+        categories: json.categories || [],
+        commands: json.commands || [],
+        // 导出排序数据，供其他用户导入时合并
+        personalOrder: personalOrder || {},
+        personalCategoriesOrder: personalCategoriesOrder || [],
       };
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -1129,11 +1140,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const text = await file.text();
       const imported = JSON.parse(text);
-      const categories = imported.categories || [];
-      const commands = imported.commands || [];
+      const importedCategories = imported.categories || [];
+      const importedCommands = imported.commands || [];
+      const importedUpdatedAt = imported.updated_at || null;
+      const importedOrder = imported.personalOrder || {};
+      const importedCatOrder = imported.personalCategoriesOrder || [];
+
+      // ── 冲突检测：获取后端最新数据，对比时间戳 ──
+      const r_check = await chrome.storage.local.get('gm_user_name');
+      const rawName_check = (r_check?.gm_user_name || '').trim();
+      let conflictResult = null; // null=无冲突，'overwrite'=覆盖云端，'local'=仅存本地
+      let backendCmds = [], backendCats = [], backendUpdatedAt = null;
+
+      if (rawName_check) {
+        const ctrl2 = new AbortController();
+        const tid2 = setTimeout(() => ctrl2.abort(), BACKEND_TIMEOUT);
+        try {
+          const resp2 = await fetch(`${BACKEND_URL}/api/commands/${encodeURIComponent(rawName_check)}`, { signal: ctrl2.signal });
+          clearTimeout(tid2);
+          if (resp2.ok) {
+            const backendData = await resp2.json();
+            if (backendData.commands) {
+              const parsed = JSON.parse(backendData.commands);
+              const isNew = parsed && typeof parsed === 'object' && !Array.isArray(parsed);
+              backendCats = isNew ? (parsed.categories || []) : [];
+              backendCmds = isNew ? (parsed.commands || []) : (parsed || []);
+              backendCmds = backendCmds.map(c => ({ name: c.name || c, text: c.text || c, category: c.category || '' }));
+              backendUpdatedAt = backendData.updated_at || null;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 若后端有新数据（updated_at 更晚），弹出冲突确认
+      if (backendUpdatedAt) {
+        const impTime = importedUpdatedAt ? new Date(importedUpdatedAt).getTime() : 0;
+        const beTime = new Date(backendUpdatedAt).getTime();
+        if (beTime > impTime) {
+          conflictResult = await showConflictModal(
+            importedCommands, importedCategories,
+            backendCmds, backendCats,
+            importedUpdatedAt, backendUpdatedAt
+          );
+          if (conflictResult === null) {
+            // 用户取消
+            btn.disabled = false;
+            btn.textContent = '导入 JSON';
+            importFileInput.value = '';
+            return;
+          }
+        }
+      }
+
+      const categories = importedCategories;
+      const commands = importedCommands;
 
       let addedCats = 0;
       let addedCmds = 0;
+      let updatedCmds = 0;
 
       // 第一步：收集所有要合并的分组
       //    1. imported.categories 里明确声明的分组
@@ -1144,48 +1208,91 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (cat) allImportCats.add(cat);
       });
 
-      // 第二步：增量合并分组
+      // 第二步：增量合并分组（分组顺序追加到 personalCategoriesOrder 末尾）
+      const newCatOrder = [];
       allImportCats.forEach(cat => {
         if (!personalCategories.includes(cat)) {
           personalCategories.push(cat);
           addedCats++;
+          newCatOrder.push(cat);
         }
       });
+      // 追加新分组到 personalCategoriesOrder 末尾
+      if (newCatOrder.length > 0) {
+        newCatOrder.forEach(cat => {
+          if (!personalCategoriesOrder.includes(cat)) {
+            personalCategoriesOrder.push(cat);
+          }
+        });
+      }
 
-      // 第三步：增量合并指令（按 name 去重）
-      const existingNames = new Set(personalCommands.map(c => c.name));
+      // 第三步：合并指令（同名覆盖，导入内容为准；新增追加）
+      const existingNameMap = {};
+      personalCommands.forEach((cmd, idx) => { existingNameMap[cmd.name] = idx; });
       commands.forEach(cmd => {
-        if (!existingNames.has(cmd.name)) {
-          // 指令引用的分组若已在上一步合并进来了，这里直接用即可
-          personalCommands.push({ name: cmd.name, text: cmd.text, category: cmd.category || '' });
+        const normalized = { name: cmd.name, text: cmd.text, category: cmd.category || '' };
+        if (existingNameMap.hasOwnProperty(cmd.name)) {
+          // 同名：以导入内容覆盖
+          personalCommands[existingNameMap[cmd.name]] = normalized;
+          updatedCmds++;
+        } else {
+          // 新增：追加到末尾
+          personalCommands.push(normalized);
           addedCmds++;
         }
       });
 
+      // 第四步：合并 personalOrder（将新指令 name 追加到对应分类的 order 列表末尾）
+      // importedOrder / importedCatOrder 已在顶部提取
+      Object.keys(importedOrder).forEach(cat => {
+        const importedNames = importedOrder[cat] || [];
+        // 确保该分类在 personalOrder 中存在
+        if (!personalOrder[cat]) personalOrder[cat] = [];
+        // 追加导入的 order（只追加新 name，已存在的保持原顺序）
+        importedNames.forEach(name => {
+          if (!personalOrder[cat].includes(name)) {
+            personalOrder[cat].push(name);
+          }
+        });
+      });
+      // 合并分类顺序
+      importedCatOrder.forEach(cat => {
+        if (!personalCategoriesOrder.includes(cat)) {
+          personalCategoriesOrder.push(cat);
+        }
+      });
+
+      // 第五步：持久化全部本地存储
       await saveLocalPersonalCategories(personalCategories);
       await saveLocalPersonalCommands(personalCommands);
       await saveLocalPersonalFull({ categories: personalCategories, commands: personalCommands });
+      await savePersonalOrder();         // 持久化 personalOrder
+      await savePersonalCategoriesOrder(); // 持久化 personalCategoriesOrder
 
-      // 同步后端（点击时实时读 storage，不依赖 currentUserName 轮询）
-      const r = await chrome.storage.local.get('gm_user_name');
-      const rawName = (r?.gm_user_name || '').trim();
-      if (rawName) {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
-        try {
-          await fetch(`${BACKEND_URL}/api/commands`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ owner: rawName, commands: JSON.stringify({ categories: personalCategories, commands: personalCommands }) }),
-            signal: ctrl.signal
-          });
-          clearTimeout(tid);
-        } catch (e) { clearTimeout(tid); }
+      // 第六步：同步后端
+      // conflictResult === 'local' → 仅存本地，跳过后端同步
+      // conflictResult === 'overwrite' | null → 正常同步到后端
+      let syncFailed = false;
+      if (conflictResult !== 'local') {
+        const r = await chrome.storage.local.get('gm_user_name');
+        const rawName = (r?.gm_user_name || '').trim();
+        if (rawName) {
+          const syncOk = await syncPersonalDataToBackend(rawName, personalCategories, personalCommands);
+          if (!syncOk) syncFailed = true;
+        }
       }
 
       buildPersonalCategoryTabs();
       renderPersonalButtons();
-      showGenStatus(`导入完成：新增 ${addedCats} 个分组、${addedCmds} 条指令`);
+      if (conflictResult === 'local') {
+        const updatedStr = updatedCmds > 0 ? `，覆盖 ${updatedCmds} 条` : '';
+        showGenStatus(`导入完成（仅存本地）：新增 ${addedCats} 个分组、${addedCmds} 条${updatedStr}`);
+      } else if (syncFailed) {
+        showGenStatus(`导入完成：新增 ${addedCats} 个分组、${addedCmds} 条指令（后端同步失败，数据已存本地）`, true);
+      } else {
+        const updatedStr = updatedCmds > 0 ? `，覆盖 ${updatedCmds} 条` : '';
+        showGenStatus(`导入完成：新增 ${addedCats} 个分组、${addedCmds} 条${updatedStr}`);
+      }
     } catch (e) {
       showGenStatus('导入失败: ' + e.message);
     }
@@ -1193,6 +1300,76 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.textContent = '导入 JSON';
     importFileInput.value = '';
   });
+
+  // ================================================================
+  //  导入冲突确认弹窗
+  // ================================================================
+  const conflictModal = document.getElementById('import-conflict-modal');
+  const closeConflictBtn = document.getElementById('close-conflict-modal-btn');
+  const conflictOverwriteBtn = document.getElementById('conflict-overwrite-btn');
+  const conflictLocalBtn = document.getElementById('conflict-local-btn');
+  const conflictCancelBtn = document.getElementById('conflict-cancel-btn');
+
+  // 'overwrite' | 'local' | null
+  let conflictResolve = null;
+
+  function formatTime(isoStr) {
+    if (!isoStr) return '未知';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch { return isoStr; }
+  }
+
+  function showConflictModal(importedCmds, importedCats, backendCmds, backendCats, importTime, backendTime) {
+    return new Promise(resolve => {
+      conflictResolve = resolve;
+
+      const impMeta = document.getElementById('conflict-import-meta');
+      const beMeta = document.getElementById('conflict-backend-meta');
+      const detail = document.getElementById('conflict-detail');
+
+      impMeta.textContent = `${importedCats.length} 个分组，${importedCmds.length} 条指令\n更新时间：${formatTime(importTime)}`;
+      beMeta.textContent = `${backendCats.length} 个分组，${backendCmds.length} 条指令\n更新时间：${formatTime(backendTime)}`;
+
+      const impSet = new Set(importedCmds.map(c => c.name));
+      const beSet = new Set(backendCmds.map(c => c.name));
+      const onlyInImport = importedCmds.filter(c => !beSet.has(c.name));
+      const onlyInBackend = backendCmds.filter(c => !impSet.has(c.name));
+
+      let detailHtml = '';
+      if (onlyInBackend.length > 0) {
+        detailHtml += `<b>⚠️ 仅云端有（导入后会被合并，不会丢失）：</b><br>`;
+        onlyInBackend.slice(0, 5).forEach(c => {
+          detailHtml += `· ${c.name}${c.category ? ` [${c.category}]` : ''}<br>`;
+        });
+        if (onlyInBackend.length > 5) detailHtml += `· ...等共 ${onlyInBackend.length} 条<br>`;
+      }
+      detailHtml += `<br><b>仅导入文件有（将新增到云端）：</b><br>`;
+      if (onlyInImport.length > 0) {
+        onlyInImport.slice(0, 5).forEach(c => {
+          detailHtml += `· ${c.name}${c.category ? ` [${c.category}]` : ''}<br>`;
+        });
+        if (onlyInImport.length > 5) detailHtml += `· ...等共 ${onlyInImport.length} 条`;
+      } else {
+        detailHtml += `（无）`;
+      }
+      detail.innerHTML = detailHtml;
+
+      conflictModal.classList.remove('hidden');
+    });
+  }
+
+  function hideConflictModal(result) {
+    conflictModal.classList.add('hidden');
+    if (conflictResolve) { conflictResolve(result); conflictResolve = null; }
+  }
+
+  closeConflictBtn.addEventListener('click', () => hideConflictModal(null));
+  conflictCancelBtn.addEventListener('click', () => hideConflictModal(null));
+  conflictModal.addEventListener('click', e => { if (e.target === conflictModal) hideConflictModal(null); });
+  conflictOverwriteBtn.addEventListener('click', () => hideConflictModal('overwrite'));
+  conflictLocalBtn.addEventListener('click', () => hideConflictModal('local'));
 
   saveWhitelistBtn.addEventListener('click', async () => {
     const lines = whitelistInput.value.split('\n').map(l => l.trim()).filter(Boolean).join('\n');

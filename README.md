@@ -13,7 +13,7 @@
 | **自动执行** | 勾选后点击指令按钮会自动触发 GM 页面的"执行"按钮 |
 | **拼音模糊搜索** | 内置汉字→拼音映射，支持用拼音首字母或完整拼音搜索指令名称 |
 | **个人指令** | 自定义添加/编辑/删除指令，分组管理（支持创建、重命名、删除分组） |
-|  **云端同步** | 个人指令通过内网后端（`10.30.138.5:3000`）自动同步，支持多设备共享 |
+| **云端同步** | 个人指令通过内网后端（`http://10.30.138.5:3000`）自动同步，支持多设备共享。后端服务见 [gm-backend](../gm-backend/) |
 | **导入/导出** | 个人指令导出为 JSON 文件，支持增量导入合并 |
 | **执行历史** | 记录最近 100 条执行记录，支持快速重新执行，可编辑角色 ID 后重新下发 |
 | **域名白名单** | 安全机制，仅在指定的 GM 域名下注入面板；支持设置页面自定义域名 |
@@ -26,18 +26,11 @@
 ## 架构
 
 ```
-GMHelper/
-├── manifest.json          # Chrome 扩展清单（Manifest V3）
-├── background.js          # Service Worker：快捷键监听、窗口管理
-├── content_script.js      # 注入脚本：读取用户名、创建浮窗容器
-├── panel.html / panel.js  # 主 UI（iframe 内嵌）
-├── popup.html             # 扩展图标弹窗
-├── devtools.html          # DevTools 侧边面板入口
-├── commands.json          # 内置 GM 指令定义（JSON，分分类组织）
-└── styles.css            # 所有 UI 样式（共用）
+GMHelper/                    ← 前端：Chrome 扩展
+gm-backend/                 ← 后端：Node.js API 服务
 ```
 
-### 文件职责
+### 前端文件职责
 
 | 文件 | 职责 |
 |------|------|
@@ -141,9 +134,13 @@ gm.usa.novagames.net
 
 ## 后端同步机制
 
+> 后端服务见 [gm-backend](../gm-backend/)
+
 ```
 后端地址: http://10.30.138.5:3000
 ```
+
+### 同步场景
 
 | 场景 | 行为 |
 |------|------|
@@ -166,28 +163,6 @@ gm.usa.novagames.net
 > **注意**：`commands` 字段是**字符串**（序列化后的 JSON），需双重解析：
 > - 外层：`JSON.parse(responseBody)` → `{ commands: "{...}" }`
 > - 内层：`JSON.parse(d.commands)` → 实际的命令对象 `{ "装备": [...], "皮肤": [...] }`
-
-### 通用指令更新流程（Node.js 脚本参考）
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│  ① curl GET /api/commands/public                            │
-│       ↓                                                      │
-│  ② 保存为 current_public.json（本地备份）                       │
-│       ↓                                                      │
-│  ③ JSON.parse(d.commands) 解析内层嵌套结构                     │
-│       ↓                                                      │
-│  ④ 执行操作：去重 + 插入新指令                                 │
-│       ↓                                                      │
-│  ⑤ JSON.stringify(cmds) 重新序列化为字符串                     │
-│       ↓                                                      │
-│  ⑥ HTTP POST /api/commands/public                           │
-│       ↓                                                      │
-│  ⑦ 打印状态码和响应                                          │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
 
 ### 数据模型
 
@@ -266,63 +241,6 @@ gm.usa.novagames.net
 
 ---
 
-## 备份工具
-
-本地备份目录 `backup/` 用于将后端数据库快照到本地，防止误改/误删后无法恢复。
-
-### 快速使用（Windows）
-
-双击 `backup/backup.bat`，按菜单选择：
-
-```
-[1] 全量备份（所有用户）
-[2] 增量对比备份（仅记录有变化的用户）
-[3] 查看备份历史
-[Q] 退出
-```
-
-### 命令行用法
-
-```bash
-# 全量备份
-node backup/backup.js
-
-# 增量对比备份（仅写入内容变化的 owner）
-node backup/backup.js --diff
-
-# 查看备份列表
-node backup/list-backups.js
-
-# 交互式恢复
-node backup/restore.js
-
-# 静默恢复最新备份全部数据
-node backup/restore.js --latest
-
-# 静默仅恢复公开指令
-node backup/restore.js --latest public
-```
-
-### 备份目录结构
-
-```
-backup/
-├── backup.js        # 备份脚本
-├── restore.js       # 恢复脚本（交互 + 静默）
-├── list-backups.js  # 查看备份历史
-├── backup.bat       # Windows 快捷入口
-└── backups/         # 备份数据（自动创建）
-    ├── index.json            # latest 指针 + 历史列表
-    └── 2026-04-08/           # 按日期归档
-        ├── manifest.json     # 备份元数据（用户数/分类数/模式等）
-        ├── public.json        # 公开通用指令快照
-        └── 张三(Wis).json     # 各用户个人指令快照
-```
-
-详细文档见 [[GMHelper/backup/README.md]]（同一目录下）
-
----
-
 ## 版本历史
 
 | 版本 | 说明 |
@@ -353,7 +271,7 @@ backup/
 ```
 
 ### 修改后端地址
-在 `panel.js` 和 `content_script.js` 中搜索 `BACKEND_URL`（当前：`http://10.30.138.5:3000`）
+在 `panel.js` 和 `content_script.js` 中搜索 `BACKEND_URL`（当前：`http://10.30.138.5:3000`）。后端服务代码见 [gm-backend](../gm-backend/)。
 
 ### 扩展权限说明
 | 权限 | 用途 |

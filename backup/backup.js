@@ -20,7 +20,18 @@ const http  = require('http');
 // ---- 配置路径（相对于本文件） ----
 const SCRIPT_DIR = __dirname;
 const ROOT_DIR   = path.resolve(SCRIPT_DIR, '..');          // GMHelper/
-const CONFIG_PATH = path.resolve(ROOT_DIR, 'gm_backend', 'config.json');
+const CONFIG_PATH = (() => {
+  const candidates = [
+    path.resolve(ROOT_DIR, 'gm_backend', 'config.json'),        // 原路径（与 GMHelper 同级的 gm_backend/）
+    path.resolve(ROOT_DIR, '..', 'gm_backend', 'config.json'),  // GMHelper/../gm_backend/
+    path.resolve(ROOT_DIR, '..', '..', 'gm-backend', 'config.json'), // GMHelper/../../gm-backend/
+    path.resolve(ROOT_DIR, '..', '..', 'gm-backend', 'config.json'), // GMHelper/../../gm-backend/
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return candidates[0]; // 返回第一个作为默认值
+})();
 const BACKUPS_DIR = path.resolve(SCRIPT_DIR, 'backups');
 const INDEX_FILE  = path.resolve(BACKUPS_DIR, 'index.json');
 
@@ -31,6 +42,7 @@ try {
   console.log('[备份] 已加载配置:', CONFIG_PATH);
 } catch (e) {
   console.error('[备份] 读取配置文件失败:', CONFIG_PATH, e.message);
+  console.error('[备份] 请确保 gm-backend/config.json 存在，或参考 README 调整路径。');
   process.exit(1);
 }
 
@@ -64,13 +76,20 @@ function httpRequest(method, urlPath, body, timeout = 10000) {
 }
 
 // ---- MySQL 连接封装（mysql2） ----
-// 从 gm_backend/node_modules/ 加载（backup.js 与 gm_backend/ 是兄弟目录）
+// 从 gm_backend/node_modules/ 或 gm-backend/node_modules/ 加载（backup.js 与 gm_backend/ 是兄弟目录）
 function loadMysql2() {
+  const candidates = [
+    path.resolve(ROOT_DIR, 'gm_backend', 'node_modules'),
+    path.resolve(ROOT_DIR, '..', 'gm_backend', 'node_modules'),
+    path.resolve(ROOT_DIR, '..', '..', 'gm-backend', 'node_modules'),
+  ];
   try { return require('mysql2/promise'); }
   catch {
-    // 尝试从父级 gm_backend/ 加载
-    const gmBackendNodeModules = path.resolve(ROOT_DIR, 'gm_backend', 'node_modules');
-    return require(path.resolve(gmBackendNodeModules, 'mysql2/promise'));
+    for (const nm of candidates) {
+      try { return require(path.resolve(nm, 'mysql2/promise')); }
+      catch {}
+    }
+    throw new Error('找不到 mysql2 模块');
   }
 }
 async function createMysqlPool() {

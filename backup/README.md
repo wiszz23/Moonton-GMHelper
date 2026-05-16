@@ -1,6 +1,6 @@
 # GMHelper 备份工具
 
-> 定时或手动将后端数据库中的公开指令和个人指令快照到本地，防止误改/误删后无法恢复。
+> 定时或手动将后端数据库中的公开指令和个人指令快照到本地，防止误改/误删后无法恢复。后端服务见 [gm-backend](../gm-backend/)。
 
 ---
 
@@ -229,8 +229,10 @@ node restore.js
 
 ## 依赖
 
-- **Node.js**（已包含 `mysql2` 驱动，由 `gm_backend/package.json` 提供）
-- 运行路径需能访问 `../gm_backend/config.json`
+- **Node.js**（需要 `mysql2` 驱动，由后端 `gm-backend/node_modules/` 提供）
+- 脚本会自动查找以下位置的 `config.json` 和 `node_modules`：
+  - `../gm_backend/`（原路径，与 GMHelper 同级的后端目录）
+  - `../../gm-backend/`（分离后的后端目录）
 - 运行路径需能访问 `http://10.30.138.5:3000`
 
-> 如果 `mysql2` 模块找不到，请从 `gm_backend/` 目录执行，或在 `backup/` 目录运行 `npm install` 指向 `gm_backend/node_modules`。
+> 如果 `mysql2` 模块找不到，请确保 `gm-backend/node_modules` 存在（运行 `npm install`），或参考上方路径说明。
