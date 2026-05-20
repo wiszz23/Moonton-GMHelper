@@ -280,3 +280,5 @@ gm.usa.novagames.net
 | `scripting` | `chrome.scripting.executeScript` 调用 |
 | `storage` | 本地持久化指令、历史、白名单、用户名 |
 | `host_permissions: <all_urls>` | content_script 需注入到所有页面，但实际仅白名单域名生效 |
+
+
