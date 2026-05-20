@@ -204,7 +204,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadLocalPersonalCategories() {
     try {
       const r = await chrome.storage.local.get('gm_personal_categories');
-      return r.gm_personal_categories || ['道具', '装备', '天赋'];
+      const cats = r.gm_personal_categories;
+      console.log('[GM面板] loadLocalPersonalCategories 返回:', cats || '(无, fallback默认)');
+      return cats || ['道具', '装备', '天赋'];
     } catch (e) { return ['道具', '装备', '天赋']; }
   }
 
@@ -213,8 +215,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function reloadPersonalCategories() {
+    console.log('[GM面板] reloadPersonalCategories start | currentUserName:', currentUserName);
     const local = await loadLocalPersonalCategories();
     if (!currentUserName) {
+      console.log('[GM面板] reloadPersonalCategories → !currentUserName, local:', JSON.stringify(local));
       personalCategories = local;
       // 首次初始化 personalCategoriesOrder
       if (!personalCategoriesOrder.length) {
@@ -228,6 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const r = await chrome.storage.local.get('gm_personal_full');
       const full = r.gm_personal_full;
       if (full && full.categories && Array.isArray(full.categories) && full.categories.length > 0) {
+        console.log('[GM面板] reloadPersonalCategories → 从 gm_personal_full 恢复, categories:', JSON.stringify(full.categories));
         personalCategories = full.categories;
         await saveLocalPersonalCategories(personalCategories);
         // 首次初始化 personalCategoriesOrder
@@ -238,6 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
     } catch (e) {}
+    console.log('[GM面板] reloadPersonalCategories → fallback local, local:', JSON.stringify(local));
     personalCategories = local;
     if (!personalCategoriesOrder.length) {
       personalCategoriesOrder = [...local];
@@ -251,9 +257,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadLocalPersonalCommands() {
     try {
       const r = await chrome.storage.local.get('gm_personal_commands');
-      return (r.gm_personal_commands || []).map(cmd => ({
+      const cmds = (r.gm_personal_commands || []).map(cmd => ({
         name: cmd.name || cmd, text: cmd.text || cmd, category: cmd.category || ''
       }));
+      console.log('[GM面板] loadLocalPersonalCommands 返回条数:', cmds.length);
+      return cmds;
     } catch (e) { return []; }
   }
 
@@ -278,6 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function syncPersonalDataFromBackend(owner) {
+    console.log('[GM面板] syncPersonalDataFromBackend 被调用, owner:', owner);
     if (!isInWhitelist) return null;
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
@@ -332,23 +341,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function reloadPersonalCommands(waitForSync = false) {
+    console.log('[GM面板] reloadPersonalCommands start | currentUserName:', currentUserName, '| waitForSync:', waitForSync);
     const localCmds = await loadLocalPersonalCommands();
     const localCats = await loadLocalPersonalCategories();
+    console.log('[GM面板] reloadPersonalCommands localCmds.length:', localCmds.length, '| localCats.length:', localCats.length);
 
-    // 本地已有数据 → 本地为准，以后端为备份目标
-    if (localCmds.length > 0 || localCats.length > 0) {
+    // 本地已有数据（必须有 commands）→ 本地为准，以后端为备份目标
+    // 仅用 localCmds 判断，避免默认分类 ['道具','装备','天赋'] 导致首次用户跳过后端拉取
+    if (localCmds.length > 0) {
+      console.log('[GM面板] reloadPersonalCommands → 本地已有数据分支 | localCmds:', localCmds.length, '| localCats:', localCats.length);
       personalCommands = localCmds;
       personalCategories = localCats;
       if (currentUserName) {
+        console.log('[GM面板] reloadPersonalCommands → syncPersonalDataToBackend 调用, owner:', currentUserName);
         const syncPromise = syncPersonalDataToBackend(currentUserName, personalCategories, personalCommands);
         if (waitForSync) await syncPromise; // 初始化时等同步完成再继续
+      } else {
+        console.log('[GM面板] reloadPersonalCommands → currentUserName 为空，跳过 syncPersonalDataToBackend');
       }
       return;
     }
 
     // 本地为空（首次访问）→ 从后端拉取
+    // 初始化时 currentUserName 可能尚未从 storage 加载到，先实时查一次
+    if (!currentUserName) {
+      const r = await chrome.storage.local.get('gm_user_name');
+      const rawName = (r?.gm_user_name || '').trim();
+      if (rawName) currentUserName = rawName;
+      console.log('[GM面板] reloadPersonalCommands → 实时查 gm_user_name:', currentUserName || '(空)');
+    }
     if (!currentUserName) { personalCommands = []; return; }
+    console.log('[GM面板] reloadPersonalCommands → 从后端拉取, owner:', currentUserName);
     const remote = await syncPersonalDataFromBackend(currentUserName);
+    console.log('[GM面板] reloadPersonalCommands → syncPersonalDataFromBackend 返回, remote:', remote ? '有数据' : 'null');
     if (remote && (remote.categories.length > 0 || remote.commands.length > 0)) {
       personalCommands = remote.commands;
       personalCategories = remote.categories;
@@ -356,6 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await saveLocalPersonalCategories(personalCategories);
       await saveLocalPersonalFull(remote);
     } else {
+      console.log('[GM面板] reloadPersonalCommands → 后端无数据, personalCommands 置为空');
       personalCommands = [];
     }
   }
@@ -1593,6 +1619,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('[GM面板] gm_user_name =', r?.gm_user_name);
   });
 
+  // 等待 gm_user_name 就绪（content_script 扫描需要时间）
+  async function waitForUserName(maxAttempts = 15, intervalMs = 1000) {
+    for (let i = 0; i < maxAttempts; i++) {
+      const r = await chrome.storage.local.get('gm_user_name');
+      const rawName = (r?.gm_user_name || '').trim();
+      if (rawName) return rawName;
+      if (i < maxAttempts - 1) await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+    return '';
+  }
+
   // 读取白名单并打印
   chrome.storage.local.get(STORAGE_KEY, r => {
     console.log('[GM面板] gm_whitelist =', r?.[STORAGE_KEY]);
@@ -1622,6 +1659,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('[GM面板] syncGeneralFromBackend 完成后, generalCommands keys:', Object.keys(generalCommands).join(', '));
 
   // 必须等个人数据全部加载完成再渲染 UI，避免闪烁和默认值污染
+  // 先等用户名就绪（content_script 扫描需要时间）
+  console.log('[GM面板] 开始等待 gm_user_name...');
+  const name = await waitForUserName();
+  console.log('[GM面板] waitForUserName 返回, name:', name || '(空)');
+  if (name) currentUserName = name;
+  console.log('[GM面板] currentUserName 设置为:', currentUserName);
   await reloadPersonalCategories();
   await reloadPersonalCommands(true); // 等待后端同步完成
 
