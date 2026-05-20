@@ -2,7 +2,7 @@ name: Build and Release Extension
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     # 只在扩展核心文件变化时触发，避免文档/README 等改动触发更新
     paths:
       - 'manifest.json'
@@ -52,50 +52,38 @@ jobs:
 
       - name: Push to updates repository
         uses: actions/github-script@v7
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          VERSION: ${{ steps.version.outputs.version }}
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
+            const workspace = process.env.GITHUB_WORKSPACE;
 
-            // 读取需要上传的文件
-            const files = ['manifest.json', 'background.js', 'content_script.js',
-                           'panel.html', 'panel.js', 'popup.html', 'styles.css',
-                           'commands.json', 'devtools.html', 'updates.xml', 'GMHelper.zip'];
+            const files = ['manifest.json','background.js','content_script.js',
+                           'panel.html','panel.js','popup.html','styles.css',
+                           'commands.json','devtools.html','updates.xml','GMHelper.zip'];
 
             const token = process.env.UPDATE_TOKEN;
             const owner = 'wiszz23';
             const repo = 'moonton-gmhelper-updates';
 
             for (const file of files) {
-              const filePath = path.join($GITHUB_WORKSPACE, 'release', file);
-              if (!fs.existsSync(filePath)) {
-                console.log('跳过不存在: ' + file);
-                continue;
-              }
+              const filePath = path.join(workspace, 'release', file);
+              if (!fs.existsSync(filePath)) { continue; }
               const content = fs.readFileSync(filePath);
-
-              // 检查文件是否存在
               let sha = null;
               try {
-                const existing = await github.rest.repos.getContent({
-                  owner, repo, path: file
-                });
+                const existing = await github.rest.repos.getContent({ owner, repo, path: file });
                 sha = existing.data.sha;
-              } catch (e) {
-                // 文件不存在，正常
-              }
-
+              } catch (e) {}
               await github.rest.repos.createOrUpdateFileContents({
-                owner,
-                repo,
-                path: file,
-                message: `chore: update extension v${{ steps.version.outputs.version }}`,
+                owner, repo, path: file,
+                message: `chore: update extension v${process.env.VERSION}`,
                 content: Buffer.from(content).toString('base64'),
                 sha,
-                committer: {
-                  name: 'GitHub Actions',
-                  email: 'actions@github.com'
-                }
+                committer: { name: 'GitHub Actions', email: 'actions@github.com' }
               });
               console.log('已上传: ' + file);
             }
