@@ -67,7 +67,7 @@ jobs:
             const repo = 'moonton-gmhelper-updates';
 
             for (const file of files) {
-              const filePath = path.join($GITHUB_WORKSPACE, 'release', file);
+              const filePath = path.join(process.env.GITHUB_WORKSPACE, 'release', file);
               if (!fs.existsSync(filePath)) {
                 console.log('跳过不存在: ' + file);
                 continue;
