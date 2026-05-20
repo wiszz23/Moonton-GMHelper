@@ -17,16 +17,16 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout source repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Package extension
+      - name: Build zip
         run: |
           mkdir -p release
-          for f in manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml; do
-            cp "$f" "release/$f"
-          done
+          cp manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml release/
           cd release
           zip -r GMHelper.zip manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml
 
@@ -35,54 +35,11 @@ jobs:
           cd release
           VERSION=$(grep '"version"' ../manifest.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
           sed -i "s/version='[^']*'/version='$VERSION'/" updates.xml
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Push files to updates repo via GitHub API
-        run: |
-          TOKEN=${{ secrets.UPDATE_TOKEN }}
-          REPO="wiszz23/moonton-gmhelper-updates"
-          VERSION=$(grep '"version"' manifest.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
-
-          for file in release/manifest.json release/background.js release/content_script.js release/panel.html release/panel.js release/popup.html release/styles.css release/commands.json release/devtools.html release/updates.xml release/GMHelper.zip; do
-            FNAME=$(basename "$file")
-            CONTENT=$(base64 -w0 "$file")
-
-            # 检查文件是否存在
-            SHA=""
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              -H "Authorization: token $TOKEN" \
-              "https://api.github.com/repos/$REPO/contents/$FNAME")
-
-            if [ "$HTTP_CODE" = "200" ]; then
-              SHA=$(curl -s -H "Authorization: token $TOKEN" \
-                "https://api.github.com/repos/$REPO/contents/$FNAME" | python3 -c "import sys,json; print(json.load(sys.stdin)['sha'])")
-            fi
-
-            # 上传或更新文件
-            if [ -n "$SHA" ]; then
-              PAYLOAD=$(python3 -c "import json; print(json.dumps({'message': 'chore: update $FNAME v$VERSION', 'content': '''$(base64 -w0 $file)''', 'sha': '''$SHA'''}))")
-            else
-              PAYLOAD=$(python3 -c "import json; print(json.dumps({'message': 'chore: add $FNAME v$VERSION', 'content': '''$(base64 -w0 $file)'''}))")
-            fi
-
-            RESP=$(curl -s -X PUT \
-              -H "Authorization: token $TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD" \
-              "https://api.github.com/repos/$REPO/contents/$FNAME")
-
-            if echo "$RESP" | grep -q '"sha"'; then
-              echo "✓ $FNAME"
-            else
-              echo "✗ $FNAME failed: $(echo $RESP | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("message",d))')"
-            fi
-          done
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          tag_name: v${{ hashFiles('manifest.json') }}
-          body: 'Chrome 会自动检测更新'
-          files: release/GMHelper.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.UPDATE_TOKEN }}
+          folder: release
+          target-folder: .
+          branch: gh-pages
+          commit-message: 'chore: release v${{ hashFiles(''manifest.json'') }}'
