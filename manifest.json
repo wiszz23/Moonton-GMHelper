@@ -32,7 +32,7 @@
       "suggested_key": {
         "default": "Ctrl+Shift+Y"
       },
-      "description": "打开或聚焦助手窗口"
+      "description": "打开或聚焦助手窗口."
     }
   },
   "devtools_page": "devtools.html",
