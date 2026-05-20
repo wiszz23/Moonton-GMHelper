@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GM助手</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="panel-wrapper">
+
+    <!-- ====== 顶部 Tab 导航 ====== -->
+    <div class="top-tabs">
+      <div class="top-tab active" data-tab="general">通用</div>
+      <div class="top-tab" data-tab="personal">个人</div>
+      <div class="top-tab" data-tab="history">历史</div>
+      <div class="top-tab" data-tab="settings">设置</div>
+    </div>
+
+    <!-- ====== 通用页面 ====== -->
+    <div id="page-general" class="tab-page active">
+      <div class="page-with-sidebar">
+        <div class="left-sidebar">
+          <div class="left-sidebar-header">分类</div>
+          <div id="general-category-list" class="left-sidebar-list">
+            <div class="left-sidebar-item active" data-category="all">全部</div>
+          </div>
+        </div>
+        <div class="main-panel">
+          <div class="toolbar-row">
+            <div class="input-group toolbar-id">
+              <label for="input-text">角色ID</label>
+              <input type="text" id="input-text" placeholder="空格分隔多个">
+            </div>
+            <div class="search-box toolbar-search">
+              <input type="text" id="search-input" placeholder="搜索GM指令...">
+            </div>
+          </div>
+          <div class="options-row">
+            <div class="checkbox-group">
+              <input type="checkbox" id="auto-run-checkbox">
+              <label for="auto-run-checkbox">自动执行</label>
+            </div>
+          </div>
+          <div id="buttons-container" class="buttons-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 个人页面 ====== -->
+    <div id="page-personal" class="tab-page">
+      <div class="page-with-sidebar">
+        <div class="left-sidebar">
+          <div class="left-sidebar-header">
+            <span>我的分组</span>
+            <button id="add-category-btn" class="icon-btn" title="新建分组">+</button>
+          </div>
+          <div id="personal-category-list" class="left-sidebar-list">
+            <div class="left-sidebar-item active" data-category="all">全部</div>
+          </div>
+        </div>
+        <div class="main-panel">
+          <div class="toolbar-row">
+            <div class="input-group toolbar-id">
+              <label for="input-text-personal">角色ID</label>
+              <input type="text" id="input-text-personal" placeholder="空格分隔多个">
+            </div>
+            <div class="search-box toolbar-search">
+              <input type="text" id="search-input-personal" placeholder="搜索个人指令...">
+            </div>
+          </div>
+          <div class="options-row">
+            <div class="checkbox-group">
+              <input type="checkbox" id="auto-run-personal">
+              <label for="auto-run-personal">自动执行</label>
+            </div>
+            <button id="add-cmd-btn" class="add-cmd-btn" title="添加指令">+ 添加指令</button>
+          </div>
+          <div id="personal-buttons-container" class="buttons-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 历史页面 ====== -->
+    <div id="page-history" class="tab-page">
+      <div class="main-panel history-full">
+        <div id="history-area" class="history-area">
+          <div id="history-empty" class="history-empty">暂无执行记录</div>
+          <div id="history-list" class="history-list"></div>
+        </div>
+        <button id="clear-history-btn" class="clear-history-btn">清空历史记录</button>
+      </div>
+    </div>
+
+    <!-- ====== 设置页面 ====== -->
+    <div id="page-settings" class="tab-page">
+      <div class="settings-scroll">
+        <div class="settings-page-block">
+          <div class="settings-page-title">域名白名单</div>
+          <div class="settings-page-desc">每行一个域名，支持子域名匹配</div>
+          <div class="input-group">
+            <textarea id="whitelist-input" rows="8" placeholder="gm.pre.nova.moonton.com&#10;gm.nova.oa.mt&#10;gm.aoz.moontontech.net&#10;gm-cn.yyf.muyinetwork.com"></textarea>
+          </div>
+          <button id="save-whitelist-btn" class="save-btn" style="margin-top:4px;">保存白名单</button>
+        </div>
+        <div class="settings-page-block">
+          <div class="settings-page-title">个人数据</div>
+          <div class="settings-btns-row">
+            <button id="export-personal-btn" class="save-btn" style="flex:1; background: linear-gradient(135deg, #0277bd 0%, #03a9f4 100%);">导出 JSON</button>
+            <button id="import-personal-btn" class="save-btn" style="flex:1;">导入 JSON</button>
+          </div>
+          <div class="settings-page-desc">导出：将个人指令和分组导出为 JSON 文件 · 导入：增量合并，追加缺失的分组和指令，不覆盖已有数据</div>
+          <input type="file" id="import-file-input" accept=".json" style="display:none">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ====== 浮动 Toast 通知 ====== -->
+  <div id="toast-container"></div>
+
+  <!-- ====== 分组弹窗（创建/编辑） ====== -->
+  <div id="add-category-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="cat-modal-title">新建分组</span>
+        <button id="close-cat-modal-btn" class="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label for="modal-cat-name">分组名称</label>
+          <input type="text" id="modal-cat-name" placeholder="例如：我的装备" maxlength="20">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="modal-cat-cancel-btn" class="modal-cancel-btn">取消</button>
+        <button id="modal-cat-confirm-btn" class="modal-confirm-btn">创建</button>
+      </div>
+      <div class="modal-divider hidden" id="cat-divider"></div>
+      <div class="modal-delete-zone hidden" id="cat-delete-zone">
+        <button id="modal-cat-delete-btn" class="modal-delete-btn">删除此分组</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== 添加/编辑指令弹层 ====== -->
+  <div id="add-cmd-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="modal-title">添加自定义指令</span>
+        <button id="close-modal-btn" class="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label for="modal-cmd-name">指令名称</label>
+          <input type="text" id="modal-cmd-name" placeholder="例如：给角色加钻石" maxlength="30">
+        </div>
+        <div class="input-group">
+          <label for="modal-cmd-text">指令内容</label>
+          <textarea id="modal-cmd-text" class="modal-cmd-textarea" rows="4" placeholder="例如：add_item %s 90001 99999&#10;add_item %s 90002 99999"></textarea>
+          <div class="modal-cmd-hint">%s 或 % 会被自动替换为角色ID，支持多行指令</div>
+        </div>
+        <div class="modal-category-wrap">
+          <label>所属分组</label>
+          <div id="modal-category-tags" class="modal-category-tags"></div>
+        </div>
+        <input type="hidden" id="modal-cmd-category">
+      </div>
+      <div class="modal-footer">
+        <button id="modal-cancel-btn" class="modal-cancel-btn">取消</button>
+        <button id="modal-confirm-btn" class="modal-confirm-btn">添加</button>
+      </div>
+      <div class="modal-divider hidden" id="modal-divider"></div>
+      <div id="modal-delete-zone" class="modal-delete-zone hidden">
+        <button id="modal-delete-cmd-btn" class="modal-delete-btn">删除此指令</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== 导入冲突确认弹窗 ====== -->
+  <div id="import-conflict-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="conflict-modal-title">⚠️ 检测到数据冲突</span>
+        <button id="close-conflict-modal-btn" class="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="conflict-info-box">
+          <p id="conflict-desc">云端数据比导入文件更新，可能有其他设备修改了数据：</p>
+          <div class="conflict-compare">
+            <div class="conflict-side">
+              <div class="conflict-side-label">📦 导入文件</div>
+              <div class="conflict-side-meta" id="conflict-import-meta">—</div>
+            </div>
+            <div class="conflict-vs">VS</div>
+            <div class="conflict-side">
+              <div class="conflict-side-label">☁️ 云端最新</div>
+              <div class="conflict-side-meta" id="conflict-backend-meta">—</div>
+            </div>
+          </div>
+          <div id="conflict-detail"></div>
+        </div>
+      </div>
+      <div class="modal-footer" style="flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:6px;width:100%;">
+          <button id="conflict-overwrite-btn" class="modal-confirm-btn" style="flex:1;background:#e65100;">强制覆盖云端</button>
+          <button id="conflict-local-btn" class="modal-confirm-btn" style="flex:1;">仅存本地</button>
+        </div>
+        <button id="conflict-cancel-btn" class="modal-cancel-btn" style="width:100%;">取消导入</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="panel.js"></script>
+</body>
+</html>

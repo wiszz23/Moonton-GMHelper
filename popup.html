@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GM助手</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 左侧竖向 Tab 导航 -->
+    <div class="sidebar">
+      <div class="sidebar-item active" data-panel="gmlist">
+        <span class="sidebar-icon">&#9654;</span>
+        <span class="sidebar-label">GM列表</span>
+      </div>
+      <div class="sidebar-item" data-panel="history">
+        <span class="sidebar-icon">&#9654;</span>
+        <span class="sidebar-label">历史记录</span>
+      </div>
+    </div>
+
+    <!-- 右侧内容区 -->
+    <div class="content-area">
+
+      <!-- GM列表面板 -->
+      <div id="panel-gmlist" class="panel-section active">
+        <div id="status-area" class="status-area"></div>
+
+        <div class="toolbar-row">
+          <div class="input-group toolbar-id">
+            <label for="input-text">角色ID</label>
+            <input type="text" id="input-text" placeholder="空格分隔多个">
+          </div>
+          <div class="search-box toolbar-search">
+            <input type="text" id="search-input" placeholder="搜索GM指令...">
+          </div>
+        </div>
+
+        <div class="options-row">
+          <div class="checkbox-group">
+            <input type="checkbox" id="auto-run-checkbox" checked>
+            <label for="auto-run-checkbox">自动执行</label>
+          </div>
+          <button id="settings-btn" class="settings-btn" title="设置">&#9881;</button>
+        </div>
+
+        <div id="settings-panel" class="settings-panel hidden">
+          <div class="settings-header">
+            <span>域名白名单设置</span>
+            <button id="close-settings-btn" class="close-settings-btn">×</button>
+          </div>
+          <div class="input-group">
+            <label for="whitelist-input">白名单域名（每行一个）</label>
+            <textarea id="whitelist-input" rows="6" placeholder="http://gm.pre.nova.moonton.com:8201&#10;http://gm.nova.oa.mt:8201&#10;http://gm.aoz.moontontech.net:8201&#10;https://gm-cn.yyf.muyinetwork.com:8201&#10;https://gm.jp.novagames.net:8201&#10;https://gm.usa.novagames.net:8201"></textarea>
+          </div>
+          <button id="save-whitelist-btn" class="save-btn">保存白名单</button>
+        </div>
+
+        <div id="buttons-container" class="buttons-container"></div>
+      </div>
+
+      <!-- 历史记录面板 -->
+      <div id="panel-history" class="panel-section">
+        <div id="history-area" class="history-area">
+          <div id="history-empty" class="history-empty">暂无执行记录</div>
+          <div id="history-list" class="history-list"></div>
+        </div>
+        <button id="clear-history-btn" class="clear-history-btn">清空历史记录</button>
+      </div>
+
+    </div>
+  </div>
+  <script src="panel.js"></script>
+</body>
+</html>

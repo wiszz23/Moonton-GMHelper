@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "GM助手",
+  "version": "3.15",
+  "description": "支持iframe和按钮操作的GM工具",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAonPXcQcvQndMBwIUim/OBSMSqTNgQBgDtnfp0SfHMVzOyFp5n1hIygq1rS7TlrQV1V3NqvuDKzzmsGO0g9dVoPMfMJSNIOjBJAPZ0co6qbDkuGEEjwVM0lsmekUP68fV8rfVj3CqwGSdua66yNZGEM5SI1osaOMUV2IWXZBy3EcRGGjSWvMWtY1qzinHhPSV4+df/uAhignfi9DfFoUeDGb5ZfE1YISot+V5GZRWsgEdDtu0VwPowt8ja+o7ovWMzxcerlIf5PJd75ktcCPUyCPv/eD+W6XCUB0hcoLeIvdGNUgy0ldwcrX5RARkmOVHdl0tCKiCKf+U7Hopc3xX/QIDAQAB",
+  "update_url": "https://wiszz23.github.io/Moonton-GMHelper/updates.xml",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "GM助手"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [{
+    "resources": ["commands.json", "panel.html", "panel.js", "styles.css", "popup.html", "popup.js"],
+    "matches": ["<all_urls>"]
+  }],
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "打开或聚焦助手窗口."
+    }
+  },
+  "devtools_page": "devtools.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_script.js"]
+    }
+  ]
+}

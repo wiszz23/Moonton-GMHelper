@@ -1,0 +1,1188 @@
+/* ============================================================
+   GM助手 - 顶部3Tab + 左右布局
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #fff;
+  font-size: 13px;
+  color: #333;
+}
+
+/* ============================================================
+   整体布局
+   ============================================================ */
+.panel-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-width: 300px;
+  max-width: 480px;
+}
+
+/* ============================================================
+   顶部 Tab 导航
+   ============================================================ */
+.top-tabs {
+  display: flex;
+  align-items: center;
+  background: #1a1a2e;
+  padding: 0 4px;
+  flex-shrink: 0;
+  height: 38px;
+  gap: 2px;
+}
+
+.top-tab {
+  padding: 0 16px;
+  height: 38px;
+  line-height: 38px;
+  color: #9e9eaf;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.top-tab:hover {
+  color: #e8eaf6;
+}
+
+.top-tab.active {
+  color: #fff;
+  border-bottom-color: #42a5f5;
+}
+
+/* ============================================================
+   Tab 页面
+   ============================================================ */
+.tab-page {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tab-page.active {
+  display: flex;
+}
+
+/* ============================================================
+   通用/个人页面：左右布局
+   ============================================================ */
+.page-with-sidebar {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ============================================================
+   左侧分类栏
+   ============================================================ */
+.left-sidebar {
+  width: 90px;
+  min-width: 90px;
+  background: #f5f5f5;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.left-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.left-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.left-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+  border-left: 2px solid transparent;
+  gap: 4px;
+}
+
+.left-sidebar-item:hover {
+  background: #e8eaf0;
+  color: #333;
+}
+
+.left-sidebar-item.active {
+  background: #e0eaff;
+  color: #1a56db;
+  border-left-color: #1a56db;
+  font-weight: 600;
+}
+
+.left-sidebar-item .cat-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.left-sidebar-item .cat-actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.left-sidebar-item:hover .cat-actions {
+  display: flex;
+}
+
+.left-sidebar-item .edit-cat-btn {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
+}
+
+.edit-cat-btn {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.edit-cat-btn:hover {
+  background: #bbdefb;
+}
+
+/* ============================================================
+   右侧主面板
+   ============================================================ */
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  gap: 6px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.history-full {
+  padding: 10px 12px;
+}
+
+/* ============================================================
+   通用/个人 分页切换（已废弃，由 .top-tabs 替代）
+   ============================================================ */
+.tab-switch-row { display: none; }
+.tab-switch { display: none; }
+.tab-btn { display: none; }
+
+/* ============================================================
+   下拉框（弹层内）
+   ============================================================ */
+.modal-select {
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  width: 100%;
+  background: #fafafa;
+  color: #333;
+  font-size: 12px;
+  font-family: inherit;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.modal-select:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background-color: #fff;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.15);
+}
+
+/* ============================================================
+   弹层面板
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  box-sizing: border-box;
+}
+
+.modal-overlay.hidden,
+.hidden {
+  display: none !important;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 10px;
+  width: 380px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: #1a1a2e;
+  color: #e8eaf6;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.modal-close-btn {
+  width: 22px; height: 22px;
+  border: none; background: transparent;
+  color: #aaa; cursor: pointer;
+  border-radius: 4px; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+
+.modal-close-btn:hover {
+  background: #f44336; color: #fff;
+}
+
+.modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ============================================================
+   添加指令弹窗增强
+   ============================================================ */
+.modal-cmd-hint {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: -4px;
+  line-height: 1.4;
+}
+
+.modal-cmd-name-wrap {
+  position: relative;
+}
+
+.modal-cmd-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* 弹窗分隔线 + 删除区域 */
+.modal-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 0 16px;
+}
+
+.modal-delete-zone {
+  padding: 8px 16px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-delete-zone .modal-delete-btn {
+  width: auto;
+  padding: 6px 20px;
+  background: transparent;
+  color: #d32f2f;
+  border: 1px solid #ffcdd2;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.modal-delete-zone .modal-delete-btn:hover {
+  background: #ffebee;
+  border-color: #ef9a9a;
+  color: #c62828;
+}
+
+.modal-delete-zone .modal-delete-btn:active {
+  background: #ffcdd2;
+}
+
+/* 删除区独立于 modal-box 时的样式（放在弹窗最下方） */
+.modal-delete-zone--standalone {
+  width: 380px;
+  margin: 0 auto;
+  padding: 0 0 2px;
+  display: flex;
+  justify-content: center;
+}
+
+/* ============================================================
+   弹窗分组标签选择
+   ============================================================ */
+.modal-category-wrap label {
+  display: block;
+  color: #555;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.modal-category-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modal-cat-tag {
+  padding: 4px 10px;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  font-size: 11px;
+  color: #555;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.modal-cat-tag:hover {
+  border-color: #4a9eff;
+  color: #1a56db;
+  background: #e8f0fe;
+}
+
+.modal-cat-tag.active {
+  border-color: #1a56db;
+  color: #fff;
+  background: #1a56db;
+}
+
+.modal-cat-tag.active:hover {
+  background: #1344b8;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 14px;
+}
+
+.modal-cancel-btn {
+  flex: 1;
+  padding: 8px;
+  background: #e0e0e0;
+  color: #555;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.modal-cancel-btn:hover {
+  background: #d0d0d0;
+}
+
+.modal-confirm-btn {
+  flex: 1;
+  padding: 8px;
+  background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.modal-confirm-btn:hover {
+  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+}
+
+/* ============================================================
+   状态区（已废弃，由 Toast 替代）
+   ============================================================ */
+#status-area, #status-area-personal { display: none !important; }
+
+/* ============================================================
+   浮动 Toast 通知
+   ============================================================ */
+#toast-container {
+  position: fixed;
+  top: 44px;
+  right: 8px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 220px;
+  word-break: break-all;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: toast-in 0.2s ease;
+  pointer-events: none;
+}
+
+.toast.info {
+  background: #1a1a2e;
+  color: #fff;
+  border-left: 3px solid #42a5f5;
+}
+
+.toast.success {
+  background: #1b5e20;
+  color: #fff;
+  border-left: 3px solid #4caf50;
+}
+
+.toast.error {
+  background: #b71c1c;
+  color: #fff;
+  border-left: 3px solid #ef5350;
+}
+
+.toast.leaving {
+  animation: toast-out 0.25s ease forwards;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(20px); }
+}
+
+/* ============================================================
+   工具栏（角色ID + 搜索）
+   ============================================================ */
+.toolbar-row {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  align-items: flex-end;
+}
+
+.toolbar-id {
+  width: 100px;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.toolbar-search {
+  flex: 1;
+}
+
+/* ============================================================
+   输入区
+   ============================================================ */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.input-group label {
+  color: #555;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+input[type="text"],
+textarea {
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  width: 100%;
+  background: #fafafa;
+  color: #333;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+input[type="text"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.15);
+}
+
+input[type="text"]::placeholder,
+textarea::placeholder {
+  color: #bbb;
+  font-size: 11px;
+}
+
+/* ============================================================
+   选项行
+   ============================================================ */
+.options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f5f5f5;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   快捷操作图标按钮
+   ============================================================ */
+.icon-btn {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: #e0e0e0;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.icon-btn:hover {
+  background: #1a56db;
+  color: #fff;
+}
+
+/* ============================================================
+   添加指令按钮
+   ============================================================ */
+.add-cmd-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid #1a56db;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #1565c0 0%, #1a56db 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.add-cmd-btn:hover {
+  background: linear-gradient(135deg, #1a56db 0%, #2e6ec2 100%);
+  box-shadow: 0 2px 8px rgba(26, 86, 219, 0.3);
+}
+
+/* ============================================================
+   复选框
+   ============================================================ */
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #4a9eff;
+  cursor: pointer;
+}
+
+.checkbox-group label {
+  color: #333;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ============================================================
+   设置按钮
+   ============================================================ */
+.settings-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: #e0e0e0;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  color: #666;
+}
+
+.settings-btn:hover {
+  background: #d0d0d0;
+  color: #333;
+}
+
+/* ============================================================
+   设置面板
+   ============================================================ */
+.settings-panel {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.settings-panel.hidden {
+  display: none;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+}
+
+.close-settings-btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: #f44336;
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+}
+
+/* ============================================================
+   设置页面
+   ============================================================ */
+.settings-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.settings-page-block {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.settings-page-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.settings-page-desc {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.settings-page-block textarea {
+  resize: vertical;
+}
+
+.settings-page-block .save-btn {
+  margin-top: 2px;
+}
+
+.settings-page-block .settings-page-desc {
+  margin-top: -2px;
+}
+
+.settings-btns-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* ============================================================
+   搜索框
+   ============================================================ */
+.search-box input {
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #fafafa;
+  color: #333;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.15);
+}
+
+.search-box input::placeholder {
+  color: #bbb;
+  font-size: 11px;
+}
+
+.category-header {
+  font-size: 12px;
+  font-weight: bold;
+  color: #888;
+  padding: 10px 0 4px 0;
+  margin-top: 6px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 4px;
+  width: 100%;
+  text-align: left;
+}
+
+.search-empty {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 20px 0;
+}
+
+/* ============================================================
+   个人指令按钮（编辑/删除模式）
+   ============================================================ */
+.personal-btn-wrap {
+  display: flex;
+  align-items: flex-start;  /* 按钮换行时编辑按钮贴顶对齐 */
+  width: calc(50% - 3px);
+  gap: 4px;
+  min-height: 34px;
+}
+
+.personal-btn-wrap .button {
+  flex: 1;
+  min-width: 0;
+}
+
+.personal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.personal-action-btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.personal-action-btn.edit-btn {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.personal-action-btn.edit-btn:hover {
+  background: #bbdefb;
+}
+
+.personal-action-btn.delete-btn {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.personal-action-btn.delete-btn:hover {
+  background: #ffcdd2;
+}
+
+/* ============================================================
+   GM 按钮列表（每行2个，自动换行）
+   ============================================================ */
+#buttons-container {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  align-content: flex-start;
+}
+
+#personal-buttons-container {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  align-content: flex-start;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  width: calc(50% - 3px);
+  box-sizing: border-box;
+  overflow: hidden;
+  /* 允许换行：超长文本自动换行，不截断 */
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
+  min-height: 34px;
+}
+
+.button:hover {
+  background: linear-gradient(135deg, #66bb6a 0%, #81c784 100%);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.button:active {
+  transform: scale(0.98);
+}
+
+/* ============================================================
+   历史记录区
+   ============================================================ */
+.history-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.history-empty {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 40px 0;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-item {
+  background: #f8f8f8;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.history-time {
+  font-size: 10px;
+  color: #999;
+}
+
+.history-ids {
+  font-size: 11px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.history-command {
+  font-size: 10px;
+  color: #888;
+  word-break: break-all;
+  background: #eee;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+.history-exec-btn {
+  margin-top: 5px;
+  background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+/* 历史记录中的角色ID可编辑输入框 */
+.history-id-input {
+  flex: 1;
+  padding: 2px 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #333;
+  background: #fff;
+  min-width: 0;
+  transition: all 0.15s ease;
+}
+
+.history-id-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.15);
+}
+
+.history-exec-btn:hover {
+  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.3);
+}
+
+.clear-history-btn {
+  background: linear-gradient(135deg, #9e9e9e 0%, #bdbdbd 100%);
+  width: 100%;
+  padding: 8px;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.clear-history-btn:hover {
+  background: linear-gradient(135deg, #757575 0%, #9e9e9e 100%);
+}
+
+/* ============================================================
+   拖拽排序
+   ============================================================ */
+.personal-btn-wrap {
+  cursor: grab;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  touch-action: none;
+}
+.personal-btn-wrap:active,
+.personal-btn-wrap.dragging {
+  cursor: grabbing;
+  opacity: 0.5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.personal-btn-wrap.drag-over {
+  border: 1px dashed #4a9eff;
+  background: #e8f0fe;
+  border-radius: 6px;
+}
+
+/* ============================================================
+   分类 Tab 拖拽排序
+   ============================================================ */
+.left-sidebar-item {
+  cursor: grab;
+  transition: opacity 0.15s;
+  touch-action: none;
+}
+.left-sidebar-item:active {
+  cursor: grabbing;
+  opacity: 0.4;
+}
+
+/* ============================================================
+   导入冲突确认弹窗
+   ============================================================ */
+.conflict-info-box {
+  font-size: 12px;
+  color: #444;
+  line-height: 1.5;
+}
+.conflict-info-box p {
+  margin: 0 0 10px 0;
+  color: #b71c1c;
+  font-weight: 500;
+}
+.conflict-compare {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.conflict-side {
+  flex: 1;
+  background: #f5f5f5;
+  border-radius: 6px;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+}
+.conflict-side-label {
+  font-weight: 600;
+  font-size: 11px;
+  margin-bottom: 4px;
+  color: #333;
+}
+.conflict-side-meta {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.4;
+}
+.conflict-vs {
+  display: flex;
+  align-items: center;
+  color: #999;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 2px;
+}
+#conflict-detail {
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 11px;
+  color: #e65100;
+  max-height: 80px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
