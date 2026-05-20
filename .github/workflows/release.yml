@@ -35,16 +35,48 @@ jobs:
           cd release
           VERSION=$(grep '"version"' ../manifest.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
           sed -i "s/version='[^']*'/version='$VERSION'/" updates.xml
-          echo "更新版本为: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Push release files to updates repo
-        uses: dawidd6/action-push-to-another-repository@v1
-        with:
-          source_repo: release
-          destination_repo: wiszz23/moonton-gmhelper-updates
-          destination_branch: main
-          commit_message: 'chore: update extension'
-          api_token: ${{ secrets.UPDATE_TOKEN }}
+      - name: Push files to updates repo via GitHub API
+        run: |
+          TOKEN=${{ secrets.UPDATE_TOKEN }}
+          REPO="wiszz23/moonton-gmhelper-updates"
+          VERSION=$(grep '"version"' manifest.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
+
+          for file in release/manifest.json release/background.js release/content_script.js release/panel.html release/panel.js release/popup.html release/styles.css release/commands.json release/devtools.html release/updates.xml release/GMHelper.zip; do
+            FNAME=$(basename "$file")
+            CONTENT=$(base64 -w0 "$file")
+
+            # 检查文件是否存在
+            SHA=""
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: token $TOKEN" \
+              "https://api.github.com/repos/$REPO/contents/$FNAME")
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              SHA=$(curl -s -H "Authorization: token $TOKEN" \
+                "https://api.github.com/repos/$REPO/contents/$FNAME" | python3 -c "import sys,json; print(json.load(sys.stdin)['sha'])")
+            fi
+
+            # 上传或更新文件
+            if [ -n "$SHA" ]; then
+              PAYLOAD=$(python3 -c "import json; print(json.dumps({'message': 'chore: update $FNAME v$VERSION', 'content': '''$(base64 -w0 $file)''', 'sha': '''$SHA'''}))")
+            else
+              PAYLOAD=$(python3 -c "import json; print(json.dumps({'message': 'chore: add $FNAME v$VERSION', 'content': '''$(base64 -w0 $file)'''}))")
+            fi
+
+            RESP=$(curl -s -X PUT \
+              -H "Authorization: token $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD" \
+              "https://api.github.com/repos/$REPO/contents/$FNAME")
+
+            if echo "$RESP" | grep -q '"sha"'; then
+              echo "✓ $FNAME"
+            else
+              echo "✗ $FNAME failed: $(echo $RESP | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("message",d))')"
+            fi
+          done
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
