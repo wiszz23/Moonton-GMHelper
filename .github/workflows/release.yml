@@ -21,40 +21,36 @@ jobs:
       - name: Checkout source repo
         uses: actions/checkout@v4
 
-      - name: Read version
-        id: version
-        run: |
-          VERSION=$(grep '"version"' manifest.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Package and prepare release
+      - name: Package extension
         run: |
           mkdir -p release
-          cp manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml release/
+          for f in manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml; do
+            cp "$f" "release/$f"
+          done
           cd release
           zip -r GMHelper.zip manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml
 
       - name: Update version in updates.xml
         run: |
-          sed -i "s/version='[^']*'/version='$VERSION'/" release/updates.xml
-          echo "updates.xml 已更新为版本 $VERSION"
+          cd release
+          VERSION=$(grep '"version"' ../manifest.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
+          sed -i "s/version='[^']*'/version='$VERSION'/" updates.xml
+          echo "更新版本为: $VERSION"
 
-      - name: Push to updates repository
+      - name: Push release files to updates repo
         uses: dawidd6/action-push-to-another-repository@v1
         with:
-          source_repo: .
+          source_repo: release
           destination_repo: wiszz23/moonton-gmhelper-updates
-          target_folder: .
-          include: "release/*"
-          exclude: ""
-          commit_message: "chore: update extension v${{ env.VERSION }}"
+          destination_branch: main
+          commit_message: 'chore: update extension'
           api_token: ${{ secrets.UPDATE_TOKEN }}
 
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.VERSION }}
-          body: '版本 v${{ env.VERSION }}，Chrome 会自动检测更新'
+          tag_name: v${{ hashFiles('manifest.json') }}
+          body: 'Chrome 会自动检测更新'
           files: release/GMHelper.zip
         env:
           GITHUB_TOKEN: ${{ secrets.UPDATE_TOKEN }}
