@@ -2,7 +2,7 @@ name: Build and Release Extension
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     # 只在扩展核心文件变化时触发，避免文档/README 等改动触发更新
     paths:
       - 'manifest.json'
