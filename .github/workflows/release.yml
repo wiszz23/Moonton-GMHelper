@@ -1,0 +1,117 @@
+name: Build and Release Extension
+
+on:
+  push:
+    branches: [main]
+    # 只在扩展核心文件变化时触发，避免文档/README 等改动触发更新
+    paths:
+      - 'manifest.json'
+      - 'background.js'
+      - 'content_script.js'
+      - 'panel.html'
+      - 'panel.js'
+      - 'popup.html'
+      - 'styles.css'
+      - 'commands.json'
+      - 'devtools.html'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Read version from manifest.json
+        id: version
+        run: |
+          VERSION=$(grep '"version"' manifest.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "当前版本: $VERSION"
+
+      - name: Package extension files
+        run: |
+          cd $GITHUB_WORKSPACE
+          mkdir -p release
+
+          # 只打包扩展必需文件
+          for f in manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml; do
+            cp "$f" "release/$f"
+          done
+
+          cd release
+          zip -r GMHelper.zip manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml
+          echo "打包完成，共 $(ls -la GMHelper.zip | awk '{print $5}') bytes"
+
+      - name: Update updates.xml version
+        run: |
+          cd $GITHUB_WORKSPACE/release
+          VERSION=${{ steps.version.outputs.version }}
+          sed -i "s/version='[^']*'/version='$VERSION'/" updates.xml
+          cat updates.xml
+
+      - name: Push to updates repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // 读取需要上传的文件
+            const files = ['manifest.json', 'background.js', 'content_script.js',
+                           'panel.html', 'panel.js', 'popup.html', 'styles.css',
+                           'commands.json', 'devtools.html', 'updates.xml', 'GMHelper.zip'];
+
+            const token = process.env.UPDATE_TOKEN;
+            const owner = 'wiszz23';
+            const repo = 'moonton-gmhelper-updates';
+
+            for (const file of files) {
+              const filePath = path.join($GITHUB_WORKSPACE, 'release', file);
+              if (!fs.existsSync(filePath)) {
+                console.log('跳过不存在: ' + file);
+                continue;
+              }
+              const content = fs.readFileSync(filePath);
+
+              // 检查文件是否存在
+              let sha = null;
+              try {
+                const existing = await github.rest.repos.getContent({
+                  owner, repo, path: file
+                });
+                sha = existing.data.sha;
+              } catch (e) {
+                // 文件不存在，正常
+              }
+
+              await github.rest.repos.createOrUpdateFileContents({
+                owner,
+                repo,
+                path: file,
+                message: `chore: update extension v${{ steps.version.outputs.version }}`,
+                content: Buffer.from(content).toString('base64'),
+                sha,
+                committer: {
+                  name: 'GitHub Actions',
+                  email: 'actions@github.com'
+                }
+              });
+              console.log('已上传: ' + file);
+            }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: GM助手 v${{ steps.version.outputs.version }}
+          body: |
+            ## 更新内容
+
+            版本: ${{ steps.version.outputs.version }}
+
+            请用户打开 Chrome 扩展页面，Chrome 会自动检测到新版本并提示更新。
+          files: release/GMHelper.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.UPDATE_TOKEN }}
