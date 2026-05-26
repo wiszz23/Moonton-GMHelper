@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GM助手",
-  "version": "3.16",
+  "version": "3.17",
   "description": "支持iframe和按钮操作的GM工具",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAonPXcQcvQndMBwIUim/OBSMSqTNgQBgDtnfp0SfHMVzOyFp5n1hIygq1rS7TlrQV1V3NqvuDKzzmsGO0g9dVoPMfMJSNIOjBJAPZ0co6qbDkuGEEjwVM0lsmekUP68fV8rfVj3CqwGSdua66yNZGEM5SI1osaOMUV2IWXZBy3EcRGGjSWvMWtY1qzinHhPSV4+df/uAhignfi9DfFoUeDGb5ZfE1YISot+V5GZRWsgEdDtu0VwPowt8ja+o7ovWMzxcerlIf5PJd75ktcCPUyCPv/eD+W6XCUB0hcoLeIvdGNUgy0ldwcrX5RARkmOVHdl0tCKiCKf+U7Hopc3xX/QIDAQAB",
   "update_url": "https://wiszz23.github.io/Moonton-GMHelper/updates.xml",
