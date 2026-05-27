@@ -300,11 +300,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!parsed) return null;
         // 新格式：{categories: [...], commands: [...]}，否则为旧格式（纯数组）
         const isNewFormat = parsed && typeof parsed === 'object' && !Array.isArray(parsed);
+        // 兼容 % 和 %s 两种占位符，统一转为 %s
+        const normalizeText = t => (t || '').replace(/(?<![a-zA-Z])%(?![a-zA-Z])/g, '%s');
         return {
           categories: isNewFormat ? (parsed.categories || []) : [],
           commands: isNewFormat
-            ? (parsed.commands || []).map(cmd => ({ name: cmd.name || cmd, text: cmd.text || cmd, category: cmd.category || '' }))
-            : (parsed || []).map(cmd => ({ name: cmd.name || cmd, text: cmd.text || cmd, category: cmd.category || '' }))
+            ? (parsed.commands || []).map(cmd => ({ name: cmd.name || cmd, text: normalizeText(cmd.text || cmd), category: cmd.category || '' }))
+            : (parsed || []).map(cmd => ({ name: cmd.name || cmd, text: normalizeText(cmd.text || cmd), category: cmd.category || '' }))
         };
       }
     } catch (e) { clearTimeout(tid); }
@@ -315,8 +317,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 同步个人数据到后端，返回 true=成功，false=失败
   async function syncPersonalDataToBackend(owner, categories, commands, retries = 3) {
     if (!isInWhitelist) return false;
-    // 守卫条件：commands 为空时不写入后端，避免覆盖已有数据
-    if (!commands || !commands.length) return true;
+    // 守卫条件：commands 和 categories 都为空时不写入后端，避免覆盖已有数据
+    if ((!commands || !commands.length) && (!categories || !categories.length)) return true;
+    const payload = { owner, commands: JSON.stringify({ categories, commands }) };
+    console.log('[GM面板] syncPersonalDataToBackend 发送请求 | owner:', owner, '| payload:', JSON.stringify(payload));
     for (let attempt = 1; attempt <= retries; attempt++) {
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), BACKEND_TIMEOUT);
@@ -324,10 +328,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const resp = await fetch(`${BACKEND_URL}/api/commands`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ owner, commands: JSON.stringify({ categories, commands }) }),
+          body: JSON.stringify(payload),
           signal: ctrl.signal
         });
         clearTimeout(tid);
+        const respText = await resp.text();
+        console.log('[GM面板] syncPersonalDataToBackend 响应 | attempt:', attempt, '| status:', resp.status, '| body:', respText.slice(0, 200));
         if (resp.ok) return true; // 成功
         console.warn(`[GM面板] 后端同步失败(尝试 ${attempt}/${retries}): HTTP ${resp.status}`);
       } catch (e) {
@@ -383,6 +389,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       console.log('[GM面板] reloadPersonalCommands → 后端无数据, personalCommands 置为空');
       personalCommands = [];
+      // 新用户：后端无数据时，从 localStorage 补充分类（fallback 默认值），并同步到后端
+      personalCategories = localCats;
+      if (currentUserName) {
+        console.log('[GM面板] reloadPersonalCommands → 同步默认分类到后端, owner:', currentUserName);
+        const syncOk = await syncPersonalDataToBackend(currentUserName, personalCategories, personalCommands);
+        console.log('[GM面板] reloadPersonalCommands → 同步默认分类结果:', syncOk ? '成功' : '失败');
+      }
     }
   }
 
@@ -848,8 +861,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let finalText;
     if (hasPlaceholder) {
       const words = roleIds.split(/\s+/).filter(Boolean);
+      // 统一替换：先处理 %s，再处理独立的 %（不是百分号，不是 %s）
       finalText = words.map(word =>
-        commandTemplate.replace(/%s/g, word).replace(/%(?![a-zA-Z])/g, word)
+        commandTemplate.replace(/%s/g, word).replace(/(?<![a-zA-Z])%(?![a-zA-Z])/g, word)
       ).join('\n');
     } else {
       finalText = commandTemplate;
@@ -981,7 +995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (ids && display.includes('%s')) {
           display = display.replace(/%s/g, ids);
         } else if (ids) {
-          display = display.replace(/(\S+)/g, (m) => ids + ' ' + m);
+          display = display.replace(/(?<![a-zA-Z])%(?![a-zA-Z])/g, ids);
         }
         cmdDiv.textContent = display.length > 60 ? display.substring(0, 60) + '...' : display;
         cmdDiv.title = display;

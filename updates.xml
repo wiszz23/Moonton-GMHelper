@@ -1,6 +1,6 @@
-<?xml version='3.15' encoding='UTF-8'?>
+<?xml version='3.17' encoding='UTF-8'?>
 <gupdate xmlns='http://www.google.com/update2/response' protocol='2.0'>
   <app appid='VasAx2Lsjsb6LetT7XJc2Q'>
-    <updatecheck codebase='https://wiszz23.github.io/Moonton-GMHelper/GMHelper.zip' version='3.15' />
+    <updatecheck codebase='https://wiszz23.github.io/Moonton-GMHelper/GMHelper.zip' version='3.17' />
   </app>
 </gupdate>
