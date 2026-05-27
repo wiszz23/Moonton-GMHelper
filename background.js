@@ -53,11 +53,14 @@ function compareVersion(v1, v2) {
 }
 
 function checkUpdate() {
+  console.log('[GM] 开始检查更新...');
   fetch(UPDATE_URL + '?t=' + Date.now())
     .then(r => r.json())
     .then(data => {
+      console.log('[GM] 服务器版本:', data.version);
       const latest = data.version;
       const current = chrome.runtime.getManifest().version;
+      console.log('[GM] 当前版本:', current, '最新版本:', latest, '对比:', compareVersion(latest, current));
       if (compareVersion(latest, current) > 0) {
         chrome.notifications.create('gm-update', {
           type: 'basic',
