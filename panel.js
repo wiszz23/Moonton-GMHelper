@@ -1706,6 +1706,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   requestAnimationFrame(() => { requestAnimationFrame(reportHeight); });
 
   // ================================================================
+  //  新版本检查
+  // ================================================================
+  (async function checkUpdate() {
+    try {
+      const res = await fetch('https://wiszz23.github.io/Moonton-GMHelper/updates.json?t=' + Date.now());
+      const data = await res.json();
+      const latest = data.version;
+      const current = chrome.runtime.getManifest().version;
+      const v1 = latest.split('.').map(Number), v2 = current.split('.').map(Number);
+      const cmp = (a, b) => { for (let i = 0; i < Math.max(a.length, b.length); i++) { const na = a[i]||0, nb = b[i]||0; if (na > nb) return 1; if (na < nb) return -1; } return 0; };
+      if (cmp(v1, v2) > 0) {
+        const bar = document.createElement('div');
+        bar.style.cssText = 'background:#FF5722;color:#fff;padding:10px 16px;font-size:13px;display:flex;align-items:center;justify-content:space-between;border-radius:6px;margin:8px 0;';
+        bar.innerHTML = `<span>发现新版本 <b>v${latest}</b>（当前 v${current}）</span><a href="${data.downloadUrl}" target="_blank" style="background:#fff;color:#FF5722;padding:4px 12px;border-radius:4px;text-decoration:none;font-size:12px;font-weight:bold;">下载更新</a>`;
+        document.body.insertBefore(bar, document.body.firstChild);
+      }
+    } catch (e) {}
+  })();
+
+  // ================================================================
   //  用户名轮询
   // ================================================================
   (async function pollUserName() {
