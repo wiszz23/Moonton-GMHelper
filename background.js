@@ -1,9 +1,15 @@
 // background.js - GM助手后台脚本
 
 let panelWindowId = null;
+let updateDownloadUrl = null; // 有新版本时存储下载地址
 
+// 点击扩展图标：有更新则下载，无更新则打开面板
 chrome.action.onClicked.addListener((tab) => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('panel.html') });
+  if (updateDownloadUrl) {
+    chrome.tabs.create({ url: updateDownloadUrl });
+  } else {
+    chrome.tabs.create({ url: chrome.runtime.getURL('panel.html') });
+  }
 });
 
 function createPanel() {
@@ -53,30 +59,18 @@ function compareVersion(v1, v2) {
 }
 
 function checkUpdate() {
-  console.log('[GM] 开始检查更新...');
   fetch(UPDATE_URL + '?t=' + Date.now())
     .then(r => r.json())
     .then(data => {
-      console.log('[GM] 服务器版本:', data.version);
       const latest = data.version;
       const current = chrome.runtime.getManifest().version;
-      console.log('[GM] 当前版本:', current, '最新版本:', latest, '对比:', compareVersion(latest, current));
       if (compareVersion(latest, current) > 0) {
-        chrome.notifications.create('gm-update', {
-          type: 'basic',
-          iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" fill="%234caf50"/></svg>',
-          title: 'GM助手 - 发现新版本',
-          message: `发现新版本 v${latest}，当前版本 v${current}\n点击下载更新`,
-          priority: 2
-        }, id => {
-          if (chrome.runtime.lastError) return;
-          chrome.notifications.onClicked.addListener(function handler(notifId) {
-            if (notifId === id) {
-              chrome.tabs.create({ url: data.downloadUrl });
-              chrome.notifications.onClicked.removeListener(handler);
-            }
-          });
-        });
+        updateDownloadUrl = data.downloadUrl;
+        chrome.action.setBadgeText({ text: 'NEW' });
+        chrome.action.setBadgeBackgroundColor({ color: '#FF5722' });
+      } else {
+        updateDownloadUrl = null;
+        chrome.action.setBadgeText({ text: '' });
       }
     })
     .catch(() => {});
@@ -87,6 +81,4 @@ chrome.alarms.onAlarm.addListener(alarm => {
 });
 
 chrome.alarms.create('gm-update-check', { periodInMinutes: 60 });
-
-// 启动时立即检查一次
 checkUpdate();
