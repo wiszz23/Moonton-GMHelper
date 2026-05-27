@@ -79,6 +79,11 @@ function checkUpdate() {
     .catch(() => {});
 }
 
-// 启动时检查一次，24小时后再检查
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === 'gm-update-check') checkUpdate();
+});
+
+chrome.alarms.create('gm-update-check', { periodInMinutes: 60 });
+
+// 启动时立即检查一次
 checkUpdate();
-setInterval(checkUpdate, 24 * 60 * 60 * 1000);
