@@ -4,15 +4,16 @@ on:
   push:
     branches: [master]
     paths:
-      - 'manifest.json'
-      - 'background.js'
-      - 'content_script.js'
-      - 'panel.html'
-      - 'panel.js'
-      - 'popup.html'
-      - 'styles.css'
-      - 'commands.json'
-      - 'devtools.html'
+      - 'GMHelper/manifest.json'
+      - 'GMHelper/background.js'
+      - 'GMHelper/content_script.js'
+      - 'GMHelper/panel.html'
+      - 'GMHelper/panel.js'
+      - 'GMHelper/popup.html'
+      - 'GMHelper/styles.css'
+      - 'GMHelper/commands.json'
+      - 'GMHelper/.github/workflows/release.yml'
+      - 'GMHelper/devtools.html'
 
 jobs:
   build-and-release:
