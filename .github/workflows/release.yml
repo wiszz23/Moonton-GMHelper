@@ -28,15 +28,15 @@ jobs:
       - name: Build zip
         run: |
           mkdir -p release
-          cp manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml release/
+          cp manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html release/
           cd release
-          zip -r GMHelper.zip manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html updates.xml
+          zip -r GMHelper.zip manifest.json background.js content_script.js panel.html panel.js popup.html styles.css commands.json devtools.html
 
-      - name: Update version in updates.xml
+      - name: Create updates.json
         run: |
           cd release
           VERSION=$(grep '"version"' ../manifest.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
-          sed -i "/updatecheck/s/version='[^']*'/version='$VERSION'/" updates.xml
+          echo "{\"version\":\"$VERSION\",\"downloadUrl\":\"https://wiszz23.github.io/Moonton-GMHelper/GMHelper.zip\"}" > updates.json
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
