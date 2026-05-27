@@ -1,5 +1,4 @@
 // background.js - GM助手后台脚本
-// 简化版：主要负责快捷键打开面板
 
 let panelWindowId = null;
 
@@ -37,3 +36,49 @@ chrome.commands.onCommand.addListener((command) => {
     }
   }
 });
+
+// ---------- 自动更新检查 ----------
+const UPDATE_URL = 'https://wiszz23.github.io/Moonton-GMHelper/updates.json';
+
+function compareVersion(v1, v2) {
+  const a = v1.split('.').map(Number);
+  const b = v2.split('.').map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const na = a[i] || 0;
+    const nb = b[i] || 0;
+    if (na > nb) return 1;
+    if (na < nb) return -1;
+  }
+  return 0;
+}
+
+function checkUpdate() {
+  fetch(UPDATE_URL + '?t=' + Date.now())
+    .then(r => r.json())
+    .then(data => {
+      const latest = data.version;
+      const current = chrome.runtime.getManifest().version;
+      if (compareVersion(latest, current) > 0) {
+        chrome.notifications.create('gm-update', {
+          type: 'basic',
+          iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" fill="%234caf50"/></svg>',
+          title: 'GM助手 - 发现新版本',
+          message: `发现新版本 v${latest}，当前版本 v${current}\n点击下载更新`,
+          priority: 2
+        }, id => {
+          if (chrome.runtime.lastError) return;
+          chrome.notifications.onClicked.addListener(function handler(notifId) {
+            if (notifId === id) {
+              chrome.tabs.create({ url: data.downloadUrl });
+              chrome.notifications.onClicked.removeListener(handler);
+            }
+          });
+        });
+      }
+    })
+    .catch(() => {});
+}
+
+// 启动时检查一次，24小时后再检查
+checkUpdate();
+setInterval(checkUpdate, 24 * 60 * 60 * 1000);
